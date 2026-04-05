@@ -1,0 +1,6 @@
+add_executable(grpcmmo_storage_server
+  src/main.cpp
+)
+
+target_compile_features(grpcmmo_storage_server PRIVATE cxx_std_23)
+target_link_libraries(grpcmmo_storage_server PRIVATE grpcmmo_proto grpcmmo_shared grpcmmo_storage)

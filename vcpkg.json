@@ -1,0 +1,27 @@
+{
+  "name": "grpcmmo",
+  "version-string": "0.1.0",
+  "builtin-baseline": "c3867e714dd3a51c272826eea77267876517ed99",
+  "dependencies": [
+    "abseil",
+    "assimp",
+    "fmt",
+    "glad",
+    "glm",
+    "grpc",
+    "gtest",
+    {
+      "name": "imgui",
+      "features": [ "opengl3-binding", "sdl3-binding", "vulkan-binding", "docking-experimental" ]
+    },
+    "protobuf",
+    {
+      "name": "sdl3",
+      "features": [ "vulkan" ]
+    },
+    "shaderc",
+    "spdlog",
+    "sqlite3",
+    "vulkan"
+  ]
+}

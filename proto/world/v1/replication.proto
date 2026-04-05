@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package grpcmmo.world.v1;
+
+message Vector3d {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message Quaterniond {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+  double w = 4;
+}
+
+message SurfaceAnchor {
+  string planet_id = 1;
+  string zone_id = 2;
+  string patch_id = 3;
+  Vector3d unit_normal = 4;
+  double altitude_m = 5;
+}
+
+message Transform {
+  Vector3d position_m = 1;
+  Quaterniond orientation = 2;
+  Vector3d linear_velocity_mps = 3;
+  Vector3d angular_velocity_rps = 4;
+  Vector3d up_unit = 5;
+}
+
+enum EntityKind {
+  ENTITY_KIND_UNSPECIFIED = 0;
+  ENTITY_KIND_PLAYER = 1;
+  ENTITY_KIND_NPC = 2;
+  ENTITY_KIND_PROJECTILE = 3;
+  ENTITY_KIND_INTERACTIVE = 4;
+  ENTITY_KIND_STATIC_PROP = 5;
+}
+
+enum InterpolationMode {
+  INTERPOLATION_MODE_UNSPECIFIED = 0;
+  INTERPOLATION_MODE_SNAP = 1;
+  INTERPOLATION_MODE_LINEAR = 2;
+  INTERPOLATION_MODE_VELOCITY = 3;
+  INTERPOLATION_MODE_HERMITE = 4;
+}
+
+enum EntityReplicationMode {
+  ENTITY_REPLICATION_MODE_UNSPECIFIED = 0;
+  ENTITY_REPLICATION_MODE_FULL = 1;
+  ENTITY_REPLICATION_MODE_PATCH = 2;
+}
+
+message EntityMetadata {
+  EntityKind kind = 1;
+  string archetype_id = 2;
+  string display_name = 3;
+  double bounding_radius_m = 4;
+  bool controlled_entity = 5;
+}
+
+message EntityStats {
+  float health_ratio = 1;
+  float energy_ratio = 2;
+  bool alive = 3;
+}
+
+message EntityPatch {
+  string entity_id = 1;
+  EntityReplicationMode replication_mode = 2;
+  SurfaceAnchor surface_anchor = 3;
+  Transform transform = 4;
+  EntityMetadata metadata = 5;
+  EntityStats stats = 6;
+  uint64 sample_time_ms = 7;
+  uint64 sample_tick = 8;
+  InterpolationMode interpolation_mode = 9;
+}
+
+message ReplicationBatch {
+  uint64 snapshot_id = 1;
+  uint64 base_snapshot_id = 2;
+  uint64 server_time_ms = 3;
+  uint64 server_tick = 4;
+  uint64 last_processed_input_sequence = 5;
+  repeated EntityPatch entities = 6;
+  repeated string removed_entity_ids = 7;
+}
