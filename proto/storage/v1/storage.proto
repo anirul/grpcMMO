@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package grpcmmo.storage.v1;
+
+import "world/v1/replication.proto";
+
+message AccountRecord {
+  string account_id = 1;
+  string login_name = 2;
+  bool disabled = 3;
+}
+
+message CharacterRecord {
+  string character_id = 1;
+  string account_id = 2;
+  string name = 3;
+  string planet_id = 4;
+  string zone_id = 5;
+  grpcmmo.world.v1.SurfaceAnchor last_anchor = 6;
+  grpcmmo.world.v1.Transform last_transform = 7;
+  uint64 updated_at_ms = 8;
+}
+
+message SessionRecord {
+  string session_id = 1;
+  string account_id = 2;
+  string character_id = 3;
+  string realm_id = 4;
+  uint64 issued_at_ms = 5;
+  uint64 expires_at_ms = 6;
+  bool revoked = 7;
+}

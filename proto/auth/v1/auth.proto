@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package grpcmmo.auth.v1;
+
+service AuthService {
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc ListCharacters(ListCharactersRequest) returns (ListCharactersResponse);
+  rpc CreateCharacter(CreateCharacterRequest) returns (CreateCharacterResponse);
+  rpc CreateSessionGrant(CreateSessionGrantRequest) returns (CreateSessionGrantResponse);
+}
+
+message AccountSummary {
+  string account_id = 1;
+  string display_name = 2;
+}
+
+message RealmEndpoint {
+  string realm_id = 1;
+  string display_name = 2;
+  string host = 3;
+  uint32 port = 4;
+  bool tls_required = 5;
+}
+
+message CharacterSummary {
+  string character_id = 1;
+  string name = 2;
+  string planet_id = 3;
+  string zone_id = 4;
+  uint64 last_seen_time_ms = 5;
+  bool online = 6;
+}
+
+message LoginRequest {
+  string login_name = 1;
+  string password = 2;
+  string client_build = 3;
+}
+
+message LoginResponse {
+  AccountSummary account = 1;
+  string account_access_token = 2;
+  uint64 expires_at_ms = 3;
+  repeated RealmEndpoint realms = 4;
+}
+
+message ListCharactersRequest {
+  string account_access_token = 1;
+  string realm_id = 2;
+}
+
+message ListCharactersResponse {
+  repeated CharacterSummary characters = 1;
+}
+
+message CreateCharacterRequest {
+  string account_access_token = 1;
+  string realm_id = 2;
+  string name = 3;
+}
+
+message CreateCharacterResponse {
+  CharacterSummary character = 1;
+}
+
+message CreateSessionGrantRequest {
+  string account_access_token = 1;
+  string realm_id = 2;
+  string character_id = 3;
+}
+
+message CreateSessionGrantResponse {
+  string session_id = 1;
+  string session_token = 2;
+  uint64 expires_at_ms = 3;
+  RealmEndpoint endpoint = 4;
+  CharacterSummary character = 5;
+}

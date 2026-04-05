@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package grpcmmo.chat.v1;
+
+enum ChatScope {
+  CHAT_SCOPE_UNSPECIFIED = 0;
+  CHAT_SCOPE_PROXIMITY = 1;
+  CHAT_SCOPE_WHISPER = 2;
+  CHAT_SCOPE_PARTY = 3;
+  CHAT_SCOPE_GUILD = 4;
+  CHAT_SCOPE_SYSTEM = 5;
+}
+
+message SendChatRequest {
+  string message_id = 1;
+  ChatScope scope = 2;
+  string target_id = 3;
+  string text = 4;
+}
+
+message ChatEnvelope {
+  string message_id = 1;
+  uint64 server_time_ms = 2;
+  ChatScope scope = 3;
+  string sender_entity_id = 4;
+  string sender_name = 5;
+  string target_id = 6;
+  string zone_id = 7;
+  string text = 8;
+}

@@ -1,0 +1,12 @@
+#pragma once
+
+#define GRPCMMO_HAVE_FRAME_REPO @GRPCMMO_HAVE_FRAME_REPO@
+#define GRPCMMO_HAVE_DATA_REPO @GRPCMMO_HAVE_DATA_REPO@
+
+namespace grpcmmo::shared
+{
+inline constexpr bool kHaveFrameRepo = GRPCMMO_HAVE_FRAME_REPO == 1;
+inline constexpr bool kHaveDataRepo = GRPCMMO_HAVE_DATA_REPO == 1;
+inline constexpr char kFrameRoot[] = "@GRPCMMO_FRAME_ROOT_CMAKE@";
+inline constexpr char kDataRoot[] = "@GRPCMMO_DATA_ROOT_CMAKE@";
+} // namespace grpcmmo::shared
