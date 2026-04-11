@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "frame/json/proto.h"
 #include "frame/json/serialize_uniform.h"
@@ -65,6 +66,155 @@ frame::proto::Texture MakeSolidTexture(
     return texture;
 }
 
+frame::proto::Texture MakeByteTexture(
+    const std::string& name,
+    int width,
+    int height,
+    const std::vector<std::uint8_t>& pixels)
+{
+    frame::proto::Texture texture;
+    texture.set_name(name);
+    texture.set_cubemap(false);
+    texture.mutable_size()->set_x(width);
+    texture.mutable_size()->set_y(height);
+    texture.mutable_pixel_structure()->set_value(frame::proto::PixelStructure::RGB_ALPHA);
+    texture.mutable_pixel_element_size()->set_value(frame::proto::PixelElementSize::BYTE);
+    texture.set_pixels(reinterpret_cast<const char*>(pixels.data()),
+                       static_cast<int>(pixels.size()));
+    return texture;
+}
+
+frame::proto::Texture MakeDebugCheckerTexture(const std::string& name)
+{
+    constexpr int kWidth = 512;
+    constexpr int kHeight = 512;
+    constexpr int kMicroCellSize = 8;
+    constexpr int kMinorCellSize = 32;
+    constexpr int kMajorCellSize = 128;
+    constexpr int kArrowCellSize = 64;
+
+    std::vector<std::uint8_t> pixels(
+        static_cast<std::size_t>(kWidth * kHeight * 4),
+        255);
+
+    for (int y = 0; y < kHeight; ++y)
+    {
+        for (int x = 0; x < kWidth; ++x)
+        {
+            const float u = static_cast<float>(x) / static_cast<float>(kWidth - 1);
+            const float v = static_cast<float>(y) / static_cast<float>(kHeight - 1);
+
+            const bool micro_checker =
+                (((x / kMicroCellSize) + (y / kMicroCellSize)) % 2) == 0;
+            const bool minor_checker =
+                (((x / kMinorCellSize) + (y / kMinorCellSize)) % 2) == 0;
+            const bool micro_line =
+                (x % kMicroCellSize == 0) || (y % kMicroCellSize == 0);
+            const bool minor_line =
+                (x % kMinorCellSize == 0) || (y % kMinorCellSize == 0);
+            const bool major_u_line = (x % kMajorCellSize == 0);
+            const bool major_v_line = (y % kMajorCellSize == 0);
+            const bool center_u = std::abs(x - (kWidth / 2)) <= 2;
+            const bool center_v = std::abs(y - (kHeight / 2)) <= 2;
+
+            const int arrow_u = x % kArrowCellSize;
+            const int arrow_v = y % kArrowCellSize;
+            const int arrow_center = kArrowCellSize / 2;
+            const bool arrow_shaft =
+                arrow_u >= 10 && arrow_u <= 36 &&
+                std::abs(arrow_v - arrow_center) <= 1;
+            const bool arrow_head =
+                arrow_u >= 34 && arrow_u <= 52 &&
+                std::abs(arrow_v - arrow_center) <=
+                    ((arrow_u - 34) / 2 + 1);
+            const bool arrow_marker = arrow_shaft || arrow_head;
+
+            const bool u_tick =
+                (x % kMajorCellSize >= 8 && x % kMajorCellSize <= 16) &&
+                (y % kMajorCellSize >= 8 && y % kMajorCellSize <= 52);
+            const bool v_tick =
+                (y % kMajorCellSize >= 8 && y % kMajorCellSize <= 16) &&
+                (x % kMajorCellSize >= 8 && x % kMajorCellSize <= 52);
+
+            float red = 35.0f + (150.0f * u);
+            float green = 45.0f + (150.0f * v);
+            float blue = 80.0f + (55.0f * (1.0f - v));
+
+            const float checker_scale = micro_checker ? 14.0f : -14.0f;
+            red += checker_scale;
+            green += checker_scale;
+            blue += minor_checker ? 10.0f : -6.0f;
+
+            if (micro_line)
+            {
+                red *= 0.55f;
+                green *= 0.55f;
+                blue *= 0.55f;
+            }
+            if (minor_line)
+            {
+                red = 220.0f;
+                green = 220.0f;
+                blue = 220.0f;
+            }
+            if (major_u_line)
+            {
+                red = 255.0f;
+                green = 84.0f;
+                blue = 84.0f;
+            }
+            if (major_v_line)
+            {
+                red = 84.0f;
+                green = 156.0f;
+                blue = 255.0f;
+            }
+            if (u_tick)
+            {
+                red = 255.0f;
+                green = 196.0f;
+                blue = 96.0f;
+            }
+            if (v_tick)
+            {
+                red = 96.0f;
+                green = 240.0f;
+                blue = 164.0f;
+            }
+            if (arrow_marker)
+            {
+                red = 255.0f;
+                green = 232.0f;
+                blue = 64.0f;
+            }
+            if (center_u)
+            {
+                red = 255.0f;
+                green = 56.0f;
+                blue = 56.0f;
+            }
+            if (center_v)
+            {
+                red = 56.0f;
+                green = 156.0f;
+                blue = 255.0f;
+            }
+
+            const std::size_t offset =
+                static_cast<std::size_t>((y * kWidth + x) * 4);
+            pixels[offset + 0] =
+                static_cast<std::uint8_t>(std::clamp(red, 0.0f, 255.0f));
+            pixels[offset + 1] =
+                static_cast<std::uint8_t>(std::clamp(green, 0.0f, 255.0f));
+            pixels[offset + 2] =
+                static_cast<std::uint8_t>(std::clamp(blue, 0.0f, 255.0f));
+            pixels[offset + 3] = 255;
+        }
+    }
+
+    return MakeByteTexture(name, kWidth, kHeight, pixels);
+}
+
 frame::proto::Texture MakeCubemapTextureFromFile(
     const std::string& name,
     const std::string& file_name)
@@ -113,7 +263,7 @@ void AddDefaultRaytraceTextures(frame::proto::Level* level_proto)
     add_byte_texture("attenuation_color_texture", white);
     add_float_texture("attenuation_distance_texture", far_attenuation);
 
-    add_byte_texture("opaque_albedo_texture", white);
+    *level_proto->add_textures() = MakeDebugCheckerTexture("opaque_albedo_texture");
     add_byte_texture("opaque_normal_texture", normal);
     add_byte_texture("opaque_roughness_texture", white);
     add_byte_texture("opaque_metallic_texture", black);
@@ -412,9 +562,9 @@ frame::proto::Level Scene::BuildLevelProto() const
     level.set_default_texture_name("albedo");
     *level.add_textures() = MakeRenderTexture("albedo");
     *level.add_textures() =
-        MakeCubemapTextureFromFile("skybox", "asset/cubemap/hamarikyu.hdr");
+        MakeCubemapTextureFromFile("skybox", "asset/cubemap/shiodome.hdr");
     *level.add_textures() =
-        MakeCubemapTextureFromFile("skybox_env", "asset/cubemap/hamarikyu_env.hdr");
+        MakeCubemapTextureFromFile("skybox_env", "asset/cubemap/shiodome_env.hdr");
     AddDefaultRaytraceTextures(&level);
 
     auto* scene_tree = level.mutable_scene_tree();
