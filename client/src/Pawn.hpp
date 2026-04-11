@@ -29,7 +29,7 @@ public:
 
     void ApplyReplication(const PawnSnapshot& snapshot);
     void ApplyMove(const MoveCommand& move_command);
-    void SetLocalFacingYaw(float yaw_radians);
+    void SetLocalFacingOrientation(const glm::quat& orientation);
 
     [[nodiscard]] const std::string& GetEntityId() const;
     [[nodiscard]] glm::vec3 GetRenderPosition() const;
@@ -42,15 +42,13 @@ public:
 
 private:
     void Reconcile(float delta_seconds);
-    static float NormalizeAngleRadians(float angle_radians);
 
     std::string entity_id_;
     std::string display_name_;
     glm::vec3 authoritative_position_ = glm::vec3(0.0f);
     glm::quat authoritative_orientation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     glm::vec3 predicted_position_ = glm::vec3(0.0f);
-    float authoritative_yaw_radians_ = 0.0f;
-    float predicted_yaw_radians_ = 0.0f;
+    glm::quat predicted_orientation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     float seconds_since_local_input_ = 1000.0f;
     bool controlled_ = false;
     bool initialized_ = false;

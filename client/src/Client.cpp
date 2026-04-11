@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <string>
 
@@ -25,6 +26,12 @@ namespace grpcmmo::client
 namespace
 {
 constexpr glm::uvec2 kDefaultWindowSize{1280u, 720u};
+
+bool NearlyEqualOrientation(const glm::quat& lhs, const glm::quat& rhs)
+{
+    const float alignment = std::abs(glm::dot(glm::normalize(lhs), glm::normalize(rhs)));
+    return alignment >= 0.99995f;
+}
 
 glm::vec3 ToRenderPosition(const grpcmmo::world::v1::EntityPatch& pawn_patch)
 {
@@ -73,6 +80,8 @@ int Client::Run(int argc, char** argv)
     controlled_pawn_server_id_.clear();
     camera_boon_.Reset();
     pending_move_command_.Clear();
+    last_sent_facing_orientation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    last_sent_facing_orientation_valid_ = false;
     last_frame_time_ = std::chrono::steady_clock::now();
     last_move_sent_at_ = last_frame_time_;
 
@@ -237,7 +246,16 @@ bool Client::Tick(frame::WindowInterface& window, float delta_seconds)
 
     if (Pawn* controlled_pawn = GetControlledPawn(); controlled_pawn != nullptr)
     {
-        controlled_pawn->SetLocalFacingYaw(camera_boon_.GetYawRadians());
+        const glm::quat local_facing_orientation =
+            glm::angleAxis(camera_boon_.GetYawRadians(), glm::vec3(0.0f, 1.0f, 0.0f));
+        controlled_pawn->SetLocalFacingOrientation(local_facing_orientation);
+        if (!last_sent_facing_orientation_valid_ ||
+            !NearlyEqualOrientation(local_facing_orientation, last_sent_facing_orientation_))
+        {
+            MoveCommand facing_command;
+            facing_command.SetFacingOrientation(local_facing_orientation);
+            pending_move_command_.Accumulate(facing_command);
+        }
         const MoveCommand move_command =
             controller_ptr_ != nullptr
                 ? controller_ptr_->DrivePawn(
@@ -280,6 +298,11 @@ bool Client::SendMoveIfDue()
     const bool sent = session_.SendMove(pending_move_command_);
     if (sent)
     {
+        if (pending_move_command_.has_facing_orientation)
+        {
+            last_sent_facing_orientation_ = pending_move_command_.facing_orientation;
+            last_sent_facing_orientation_valid_ = true;
+        }
         pending_move_command_.Clear();
     }
     return sent;
