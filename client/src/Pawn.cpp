@@ -6,12 +6,10 @@ namespace grpcmmo::client
 {
 namespace
 {
-constexpr float kPiRadians = 3.14159265358979323846f;
 constexpr float kHardPositionCorrectionMeters = 1.25f;
-constexpr float kHardYawCorrectionRadians = 0.55f;
+constexpr float kSoftPositionCorrectionMeters = 0.35f;
 constexpr float kIdleCorrectionDelaySeconds = 0.12f;
 constexpr float kIdlePositionCorrectionRate = 7.0f;
-constexpr float kIdleYawCorrectionRate = 10.0f;
 }
 
 void Pawn::Init()
@@ -21,8 +19,7 @@ void Pawn::Init()
     authoritative_position_ = glm::vec3(0.0f);
     authoritative_orientation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     predicted_position_ = glm::vec3(0.0f);
-    authoritative_yaw_radians_ = 0.0f;
-    predicted_yaw_radians_ = 0.0f;
+    predicted_orientation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     seconds_since_local_input_ = 1000.0f;
     controlled_ = false;
     initialized_ = false;
@@ -43,14 +40,13 @@ void Pawn::ApplyReplication(const PawnSnapshot& snapshot)
     entity_id_ = snapshot.pawn_id;
     display_name_ = snapshot.display_name;
     authoritative_position_ = snapshot.position;
-    authoritative_orientation_ = snapshot.orientation;
-    authoritative_yaw_radians_ = ExtractYawRadians(snapshot.orientation);
+    authoritative_orientation_ = glm::normalize(snapshot.orientation);
     controlled_ = snapshot.controlled;
 
     if (!initialized_)
     {
         predicted_position_ = authoritative_position_;
-        predicted_yaw_radians_ = authoritative_yaw_radians_;
+        predicted_orientation_ = authoritative_orientation_;
         seconds_since_local_input_ = 1000.0f;
         initialized_ = true;
     }
@@ -58,7 +54,7 @@ void Pawn::ApplyReplication(const PawnSnapshot& snapshot)
     if (!controlled_)
     {
         predicted_position_ = authoritative_position_;
-        predicted_yaw_radians_ = authoritative_yaw_radians_;
+        predicted_orientation_ = authoritative_orientation_;
         seconds_since_local_input_ = 1000.0f;
     }
 }
@@ -73,7 +69,7 @@ void Pawn::Reconcile(float delta_seconds)
     if (!controlled_)
     {
         predicted_position_ = authoritative_position_;
-        predicted_yaw_radians_ = authoritative_yaw_radians_;
+        predicted_orientation_ = authoritative_orientation_;
         seconds_since_local_input_ = 1000.0f;
         return;
     }
@@ -81,31 +77,18 @@ void Pawn::Reconcile(float delta_seconds)
     seconds_since_local_input_ += delta_seconds;
     const glm::vec3 position_error = authoritative_position_ - predicted_position_;
     const float position_error_m = glm::length(position_error);
-    const float yaw_error =
-        NormalizeAngleRadians(authoritative_yaw_radians_ - predicted_yaw_radians_);
 
     if (position_error_m > kHardPositionCorrectionMeters)
     {
         predicted_position_ = authoritative_position_;
     }
-    else if (seconds_since_local_input_ >= kIdleCorrectionDelaySeconds)
+    else if (position_error_m > kSoftPositionCorrectionMeters &&
+             seconds_since_local_input_ >= kIdleCorrectionDelaySeconds)
     {
         const float position_alpha =
             glm::clamp(delta_seconds * kIdlePositionCorrectionRate, 0.0f, 1.0f);
         predicted_position_ =
             glm::mix(predicted_position_, authoritative_position_, position_alpha);
-    }
-
-    if (std::abs(yaw_error) > kHardYawCorrectionRadians)
-    {
-        predicted_yaw_radians_ = authoritative_yaw_radians_;
-    }
-    else if (seconds_since_local_input_ >= kIdleCorrectionDelaySeconds)
-    {
-        const float yaw_alpha =
-            glm::clamp(delta_seconds * kIdleYawCorrectionRate, 0.0f, 1.0f);
-        predicted_yaw_radians_ =
-            NormalizeAngleRadians(predicted_yaw_radians_ + (yaw_error * yaw_alpha));
     }
 }
 
@@ -126,19 +109,17 @@ void Pawn::ApplyMove(const MoveCommand& move_command)
         return;
     }
 
-    predicted_yaw_radians_ = NormalizeAngleRadians(
-        std::atan2(move_command.world_displacement_m.z, move_command.world_displacement_m.x));
     predicted_position_ += move_command.world_displacement_m;
 }
 
-void Pawn::SetLocalFacingYaw(float yaw_radians)
+void Pawn::SetLocalFacingOrientation(const glm::quat& orientation)
 {
     if (!controlled_ || !initialized_)
     {
         return;
     }
 
-    predicted_yaw_radians_ = NormalizeAngleRadians(yaw_radians);
+    predicted_orientation_ = glm::normalize(orientation);
 }
 
 const std::string& Pawn::GetEntityId() const
@@ -155,14 +136,14 @@ glm::quat Pawn::GetRenderOrientation() const
 {
     if (controlled_)
     {
-        return glm::angleAxis(predicted_yaw_radians_, glm::vec3(0.0f, 1.0f, 0.0f));
+        return predicted_orientation_;
     }
     return authoritative_orientation_;
 }
 
 float Pawn::GetRenderYawRadians() const
 {
-    return controlled_ ? predicted_yaw_radians_ : authoritative_yaw_radians_;
+    return ExtractYawRadians(GetRenderOrientation());
 }
 
 bool Pawn::IsControlled() const
@@ -185,18 +166,5 @@ float Pawn::ExtractYawRadians(const glm::quat& orientation)
     }
     forward = glm::normalize(forward);
     return std::atan2(forward.z, forward.x);
-}
-
-float Pawn::NormalizeAngleRadians(float angle_radians)
-{
-    while (angle_radians > kPiRadians)
-    {
-        angle_radians -= 2.0f * kPiRadians;
-    }
-    while (angle_radians < -kPiRadians)
-    {
-        angle_radians += 2.0f * kPiRadians;
-    }
-    return angle_radians;
 }
 } // namespace grpcmmo::client

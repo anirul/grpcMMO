@@ -50,7 +50,10 @@ private:
         double x_m = 0.0;
         double y_m = 0.0;
         double z_m = 0.0;
-        double yaw_radians = 0.0;
+        double orientation_x = 0.0;
+        double orientation_y = 0.0;
+        double orientation_z = 0.0;
+        double orientation_w = 1.0;
         std::uint64_t last_client_time_ms = 0;
         std::uint64_t last_processed_input_sequence = 0;
         std::uint64_t last_sent_time_ms = 0;

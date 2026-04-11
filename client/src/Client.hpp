@@ -49,7 +49,9 @@ private:
     std::chrono::steady_clock::time_point session_ready_at_{};
     std::chrono::steady_clock::time_point last_frame_time_{};
     std::chrono::steady_clock::time_point last_move_sent_at_{};
+    glm::quat last_sent_facing_orientation_{1.0f, 0.0f, 0.0f, 0.0f};
     MoveCommand pending_move_command_{};
+    bool last_sent_facing_orientation_valid_ = false;
     bool debug_pose_trace_ = false;
     bool running_ = true;
     bool session_ready_received_ = false;

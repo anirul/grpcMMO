@@ -20,6 +20,7 @@ message BeginSession {
 message MoveCommand {
   grpcmmo.world.v1.Vector3d world_displacement_m = 1;
   bool sprint = 3;
+  grpcmmo.world.v1.Quaterniond facing_orientation = 5;
   reserved 2, 4;
 }
 
