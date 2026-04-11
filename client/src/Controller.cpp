@@ -12,6 +12,7 @@ namespace
 {
 constexpr float kWalkSpeedMetersPerSecond = 4.0f;
 constexpr float kSprintSpeedMetersPerSecond = 7.0f;
+constexpr float kMaxMovementStepSeconds = 0.05f;
 } // namespace
 
 bool Controller::FrameInput::HasGameplayInput() const
@@ -75,10 +76,12 @@ MoveCommand Controller::DrivePawn(Pawn& pawn,
                                   float delta_seconds) const
 {
     MoveCommand move_command;
+    const float movement_step_seconds =
+        std::clamp(delta_seconds, 0.0f, kMaxMovementStepSeconds);
     const bool has_translation_input =
         std::abs(frame_input.move_forward) > 0.001f ||
         std::abs(frame_input.move_right) > 0.001f;
-    if (!has_translation_input || delta_seconds <= 0.0f)
+    if (!has_translation_input || movement_step_seconds <= 0.0f)
     {
         return move_command;
     }
@@ -94,7 +97,7 @@ MoveCommand Controller::DrivePawn(Pawn& pawn,
     const glm::vec3 right(-forward.z, 0.0f, forward.x);
     move_command.world_displacement_m =
         ((forward * frame_input.move_forward) + (right * frame_input.move_right)) *
-        speed * delta_seconds;
+        speed * movement_step_seconds;
 
     pawn.ApplyMove(move_command);
     return move_command;

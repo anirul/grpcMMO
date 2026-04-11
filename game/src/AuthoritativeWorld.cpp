@@ -17,31 +17,50 @@ constexpr double kMaxInputStepSeconds = 0.10;
 constexpr double kSpawnSpacingMeters = 6.0;
 
 template <typename PlayerStateT>
-void SetOrientationFromYaw(PlayerStateT* player_state, double yaw_radians)
+void SetFacingDirectionFromYaw(PlayerStateT* player_state, double yaw_radians)
 {
-    player_state->orientation_x = 0.0;
-    player_state->orientation_y = std::sin(yaw_radians * 0.5);
-    player_state->orientation_z = 0.0;
-    player_state->orientation_w = std::cos(yaw_radians * 0.5);
+    player_state->facing_direction_x = std::cos(yaw_radians);
+    player_state->facing_direction_z = std::sin(yaw_radians);
 }
 
 template <typename PlayerStateT>
-void SetOrientationFromMessage(PlayerStateT* player_state,
-                               const grpcmmo::world::v1::Quaterniond& orientation)
+void SetFacingDirection(PlayerStateT* player_state,
+                        double direction_x,
+                        double direction_z)
 {
-    const double magnitude =
-        std::sqrt((orientation.x() * orientation.x()) + (orientation.y() * orientation.y()) +
-                  (orientation.z() * orientation.z()) + (orientation.w() * orientation.w()));
-    if (magnitude <= 0.000001)
+    const double magnitude_squared =
+        (direction_x * direction_x) + (direction_z * direction_z);
+    if (magnitude_squared <= 0.000001)
     {
-        SetOrientationFromYaw(player_state, 0.0);
         return;
     }
 
-    player_state->orientation_x = orientation.x() / magnitude;
-    player_state->orientation_y = orientation.y() / magnitude;
-    player_state->orientation_z = orientation.z() / magnitude;
-    player_state->orientation_w = orientation.w() / magnitude;
+    const double magnitude = std::sqrt(magnitude_squared);
+    player_state->facing_direction_x = direction_x / magnitude;
+    player_state->facing_direction_z = direction_z / magnitude;
+}
+
+template <typename OrientationT>
+void SetOrientationFromFacingDirection(OrientationT* orientation,
+                                       double direction_x,
+                                       double direction_z)
+{
+    const double magnitude_squared =
+        (direction_x * direction_x) + (direction_z * direction_z);
+    if (magnitude_squared <= 0.000001)
+    {
+        orientation->set_x(0.0);
+        orientation->set_y(0.0);
+        orientation->set_z(0.0);
+        orientation->set_w(1.0);
+        return;
+    }
+
+    const double yaw_radians = std::atan2(direction_z, direction_x);
+    orientation->set_x(0.0);
+    orientation->set_y(-std::sin(yaw_radians * 0.5));
+    orientation->set_z(0.0);
+    orientation->set_w(std::cos(yaw_radians * 0.5));
 }
 } // namespace
 
@@ -67,7 +86,7 @@ AuthoritativeWorld::ConnectResult AuthoritativeWorld::ConnectPlayer(
     player_state.x_m = static_cast<double>(spawn_index) * kSpawnSpacingMeters;
     player_state.y_m = planet_radius_m_ + 2.0;
     player_state.z_m = 0.0;
-    SetOrientationFromYaw(&player_state, 0.0);
+    SetFacingDirectionFromYaw(&player_state, 0.0);
 
     const std::uint64_t server_time_ms = grpcmmo::shared::NowMs();
     const std::uint64_t server_tick = next_tick_++;
@@ -97,10 +116,8 @@ std::optional<grpcmmo::world::v1::ReplicationBatch> AuthoritativeWorld::ApplyInp
     auto& player_state = it->second;
     const double previous_x = player_state.x_m;
     const double previous_z = player_state.z_m;
-    const double previous_orientation_x = player_state.orientation_x;
-    const double previous_orientation_y = player_state.orientation_y;
-    const double previous_orientation_z = player_state.orientation_z;
-    const double previous_orientation_w = player_state.orientation_w;
+    const double previous_facing_direction_x = player_state.facing_direction_x;
+    const double previous_facing_direction_z = player_state.facing_direction_z;
 
     const auto& move = input_frame.move();
     double input_step_seconds = kDefaultInputStepSeconds;
@@ -129,13 +146,15 @@ std::optional<grpcmmo::world::v1::ReplicationBatch> AuthoritativeWorld::ApplyInp
         requested_dz *= scale;
     }
 
-    if (move.has_facing_orientation())
+    if (move.has_facing_direction_unit())
     {
-        SetOrientationFromMessage(&player_state, move.facing_orientation());
+        SetFacingDirection(&player_state,
+                           move.facing_direction_unit().x(),
+                           move.facing_direction_unit().z());
     }
     else if (requested_distance > 0.000001)
     {
-        SetOrientationFromYaw(&player_state, std::atan2(requested_dz, requested_dx));
+        SetFacingDirection(&player_state, requested_dx, requested_dz);
     }
 
     player_state.x_m += requested_dx;
@@ -146,10 +165,8 @@ std::optional<grpcmmo::world::v1::ReplicationBatch> AuthoritativeWorld::ApplyInp
     const bool changed =
         std::abs(player_state.x_m - previous_x) > 0.0001 ||
         std::abs(player_state.z_m - previous_z) > 0.0001 ||
-        std::abs(player_state.orientation_x - previous_orientation_x) > 0.0001 ||
-        std::abs(player_state.orientation_y - previous_orientation_y) > 0.0001 ||
-        std::abs(player_state.orientation_z - previous_orientation_z) > 0.0001 ||
-        std::abs(player_state.orientation_w - previous_orientation_w) > 0.0001;
+        std::abs(player_state.facing_direction_x - previous_facing_direction_x) > 0.0001 ||
+        std::abs(player_state.facing_direction_z - previous_facing_direction_z) > 0.0001;
     const bool heartbeat_due =
         server_time_ms >= (player_state.last_sent_time_ms + heartbeat_interval_ms);
 
@@ -196,10 +213,9 @@ grpcmmo::world::v1::EntityPatch AuthoritativeWorld::MakeEntityPatch(
     transform->mutable_position_m()->set_x(player_state.x_m);
     transform->mutable_position_m()->set_y(player_state.y_m);
     transform->mutable_position_m()->set_z(player_state.z_m);
-    transform->mutable_orientation()->set_x(player_state.orientation_x);
-    transform->mutable_orientation()->set_y(player_state.orientation_y);
-    transform->mutable_orientation()->set_z(player_state.orientation_z);
-    transform->mutable_orientation()->set_w(player_state.orientation_w);
+    SetOrientationFromFacingDirection(transform->mutable_orientation(),
+                                      player_state.facing_direction_x,
+                                      player_state.facing_direction_z);
     transform->mutable_up_unit()->set_x(0.0);
     transform->mutable_up_unit()->set_y(1.0);
     transform->mutable_up_unit()->set_z(0.0);

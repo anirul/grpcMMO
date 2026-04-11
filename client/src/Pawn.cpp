@@ -10,16 +10,42 @@ constexpr float kHardPositionCorrectionMeters = 1.25f;
 constexpr float kSoftPositionCorrectionMeters = 0.35f;
 constexpr float kIdleCorrectionDelaySeconds = 0.12f;
 constexpr float kIdlePositionCorrectionRate = 7.0f;
+
+glm::quat OrientationFromDirection(const glm::vec3& direction, const glm::quat& fallback)
+{
+    const glm::vec3 horizontal(direction.x, 0.0f, direction.z);
+    const float horizontal_length_squared = glm::dot(horizontal, horizontal);
+    if (horizontal_length_squared <= 0.000001f)
+    {
+        return fallback;
+    }
+
+    const float yaw_radians = -std::atan2(horizontal.z, horizontal.x);
+    return glm::normalize(
+        glm::angleAxis(yaw_radians, glm::vec3(0.0f, 1.0f, 0.0f)));
 }
+
+glm::vec3 NormalizeFacingDirection(const glm::vec3& direction, const glm::vec3& fallback)
+{
+    const glm::vec3 horizontal(direction.x, 0.0f, direction.z);
+    const float horizontal_length_squared = glm::dot(horizontal, horizontal);
+    if (horizontal_length_squared <= 0.000001f)
+    {
+        return fallback;
+    }
+
+    return horizontal / std::sqrt(horizontal_length_squared);
+}
+} // namespace
 
 void Pawn::Init()
 {
     entity_id_.clear();
     display_name_.clear();
     authoritative_position_ = glm::vec3(0.0f);
-    authoritative_orientation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    authoritative_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
     predicted_position_ = glm::vec3(0.0f);
-    predicted_orientation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    predicted_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
     seconds_since_local_input_ = 1000.0f;
     controlled_ = false;
     initialized_ = false;
@@ -40,13 +66,14 @@ void Pawn::ApplyReplication(const PawnSnapshot& snapshot)
     entity_id_ = snapshot.pawn_id;
     display_name_ = snapshot.display_name;
     authoritative_position_ = snapshot.position;
-    authoritative_orientation_ = glm::normalize(snapshot.orientation);
+    authoritative_facing_direction_ =
+        NormalizeFacingDirection(snapshot.facing_direction, authoritative_facing_direction_);
     controlled_ = snapshot.controlled;
 
     if (!initialized_)
     {
         predicted_position_ = authoritative_position_;
-        predicted_orientation_ = authoritative_orientation_;
+        predicted_facing_direction_ = authoritative_facing_direction_;
         seconds_since_local_input_ = 1000.0f;
         initialized_ = true;
     }
@@ -54,7 +81,7 @@ void Pawn::ApplyReplication(const PawnSnapshot& snapshot)
     if (!controlled_)
     {
         predicted_position_ = authoritative_position_;
-        predicted_orientation_ = authoritative_orientation_;
+        predicted_facing_direction_ = authoritative_facing_direction_;
         seconds_since_local_input_ = 1000.0f;
     }
 }
@@ -69,7 +96,7 @@ void Pawn::Reconcile(float delta_seconds)
     if (!controlled_)
     {
         predicted_position_ = authoritative_position_;
-        predicted_orientation_ = authoritative_orientation_;
+        predicted_facing_direction_ = authoritative_facing_direction_;
         seconds_since_local_input_ = 1000.0f;
         return;
     }
@@ -112,19 +139,29 @@ void Pawn::ApplyMove(const MoveCommand& move_command)
     predicted_position_ += move_command.world_displacement_m;
 }
 
-void Pawn::SetLocalFacingOrientation(const glm::quat& orientation)
+void Pawn::SetLocalFacingDirection(const glm::vec3& direction)
 {
     if (!controlled_ || !initialized_)
     {
         return;
     }
 
-    predicted_orientation_ = glm::normalize(orientation);
+    predicted_facing_direction_ =
+        NormalizeFacingDirection(direction, predicted_facing_direction_);
 }
 
 const std::string& Pawn::GetEntityId() const
 {
     return entity_id_;
+}
+
+glm::vec3 Pawn::GetRenderFacingDirection() const
+{
+    if (controlled_)
+    {
+        return predicted_facing_direction_;
+    }
+    return authoritative_facing_direction_;
 }
 
 glm::vec3 Pawn::GetRenderPosition() const
@@ -134,16 +171,15 @@ glm::vec3 Pawn::GetRenderPosition() const
 
 glm::quat Pawn::GetRenderOrientation() const
 {
-    if (controlled_)
-    {
-        return predicted_orientation_;
-    }
-    return authoritative_orientation_;
+    return OrientationFromDirection(
+        GetRenderFacingDirection(),
+        glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 }
 
 float Pawn::GetRenderYawRadians() const
 {
-    return ExtractYawRadians(GetRenderOrientation());
+    const glm::vec3 facing_direction = GetRenderFacingDirection();
+    return std::atan2(facing_direction.z, facing_direction.x);
 }
 
 bool Pawn::IsControlled() const
@@ -154,17 +190,5 @@ bool Pawn::IsControlled() const
 glm::vec3 Pawn::GetSurfaceUp() const
 {
     return glm::vec3(0.0f, 1.0f, 0.0f);
-}
-
-float Pawn::ExtractYawRadians(const glm::quat& orientation)
-{
-    glm::vec3 forward = glm::rotate(orientation, glm::vec3(1.0f, 0.0f, 0.0f));
-    forward.y = 0.0f;
-    if (glm::dot(forward, forward) < 0.0001f)
-    {
-        return 0.0f;
-    }
-    forward = glm::normalize(forward);
-    return std::atan2(forward.z, forward.x);
 }
 } // namespace grpcmmo::client

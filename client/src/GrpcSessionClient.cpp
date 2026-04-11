@@ -112,13 +112,12 @@ bool GrpcSessionClient::SendMove(const MoveCommand& move_command)
     move->mutable_world_displacement_m()->set_z(
         static_cast<double>(move_command.world_displacement_m.z));
     move->set_sprint(move_command.sprint);
-    if (move_command.has_facing_orientation)
+    if (move_command.has_facing_direction)
     {
-        auto* facing_orientation = move->mutable_facing_orientation();
-        facing_orientation->set_x(static_cast<double>(move_command.facing_orientation.x));
-        facing_orientation->set_y(static_cast<double>(move_command.facing_orientation.y));
-        facing_orientation->set_z(static_cast<double>(move_command.facing_orientation.z));
-        facing_orientation->set_w(static_cast<double>(move_command.facing_orientation.w));
+        auto* facing_direction = move->mutable_facing_direction_unit();
+        facing_direction->set_x(static_cast<double>(move_command.facing_direction_unit.x));
+        facing_direction->set_y(static_cast<double>(move_command.facing_direction_unit.y));
+        facing_direction->set_z(static_cast<double>(move_command.facing_direction_unit.z));
     }
     return session_stream_->Write(input_message);
 }
