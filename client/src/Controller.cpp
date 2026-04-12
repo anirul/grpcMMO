@@ -43,9 +43,9 @@ void Controller::Tick(float /*delta_seconds*/)
     frame_input_.sprint = sprint_down_;
     frame_input_.exit_requested = exit_requested_;
     frame_input_.look_yaw_delta_radians =
-        -accumulated_mouse_delta_.x * kMouseYawSensitivity;
+        accumulated_mouse_delta_.x * kMouseYawSensitivity;
     frame_input_.look_pitch_delta_radians =
-        -accumulated_mouse_delta_.y * kMousePitchSensitivity;
+        accumulated_mouse_delta_.y * kMousePitchSensitivity;
 
     glm::vec2 movement(frame_input_.move_forward, frame_input_.move_right);
     if (glm::dot(movement, movement) > 1.0f)
