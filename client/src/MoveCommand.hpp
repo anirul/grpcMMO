@@ -1,16 +1,16 @@
 #pragma once
 
-#define GLM_ENABLE_EXPERIMENTAL
+#include <cmath>
+
 #include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp>
 
 namespace grpcmmo::client
 {
 struct MoveCommand
 {
     glm::vec3 world_displacement_m = glm::vec3(0.0f);
-    glm::quat facing_orientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-    bool has_facing_orientation = false;
+    glm::vec3 facing_direction_unit = glm::vec3(1.0f, 0.0f, 0.0f);
+    bool has_facing_direction = false;
     bool sprint = false;
 
     [[nodiscard]] bool HasTranslation() const
@@ -20,24 +20,31 @@ struct MoveCommand
 
     [[nodiscard]] bool HasSignal() const
     {
-        return HasTranslation() || has_facing_orientation;
+        return HasTranslation() || has_facing_direction;
     }
 
     void Accumulate(const MoveCommand& other)
     {
         world_displacement_m += other.world_displacement_m;
-        if (other.has_facing_orientation)
+        if (other.has_facing_direction)
         {
-            facing_orientation = other.facing_orientation;
-            has_facing_orientation = true;
+            facing_direction_unit = other.facing_direction_unit;
+            has_facing_direction = true;
         }
         sprint = sprint || other.sprint;
     }
 
-    void SetFacingOrientation(const glm::quat& orientation)
+    void SetFacingDirection(const glm::vec3& direction)
     {
-        facing_orientation = glm::normalize(orientation);
-        has_facing_orientation = true;
+        const glm::vec3 horizontal(direction.x, 0.0f, direction.z);
+        const float length_squared = glm::dot(horizontal, horizontal);
+        if (length_squared <= 0.000001f)
+        {
+            return;
+        }
+
+        facing_direction_unit = horizontal / std::sqrt(length_squared);
+        has_facing_direction = true;
     }
 
     void Clear()

@@ -27,9 +27,17 @@ namespace
 {
 constexpr glm::uvec2 kDefaultWindowSize{1280u, 720u};
 
-bool NearlyEqualOrientation(const glm::quat& lhs, const glm::quat& rhs)
+bool NearlyEqualDirection(const glm::vec3& lhs, const glm::vec3& rhs)
 {
-    const float alignment = std::abs(glm::dot(glm::normalize(lhs), glm::normalize(rhs)));
+    const float lhs_length_squared = glm::dot(lhs, lhs);
+    const float rhs_length_squared = glm::dot(rhs, rhs);
+    if (lhs_length_squared <= 0.000001f || rhs_length_squared <= 0.000001f)
+    {
+        return lhs_length_squared <= 0.000001f && rhs_length_squared <= 0.000001f;
+    }
+
+    const float alignment =
+        glm::dot(lhs / std::sqrt(lhs_length_squared), rhs / std::sqrt(rhs_length_squared));
     return alignment >= 0.99995f;
 }
 
@@ -40,13 +48,24 @@ glm::vec3 ToRenderPosition(const grpcmmo::world::v1::EntityPatch& pawn_patch)
                      static_cast<float>(pawn_patch.transform().position_m().z()));
 }
 
-glm::quat ToRenderOrientation(const grpcmmo::world::v1::EntityPatch& pawn_patch)
+glm::vec3 ToFacingDirection(const grpcmmo::world::v1::EntityPatch& pawn_patch)
 {
     const auto& orientation = pawn_patch.transform().orientation();
-    return glm::normalize(glm::quat(static_cast<float>(orientation.w()),
-                                    static_cast<float>(orientation.x()),
-                                    static_cast<float>(orientation.y()),
-                                    static_cast<float>(orientation.z())));
+    const glm::quat render_orientation(
+        static_cast<float>(orientation.w()),
+        static_cast<float>(orientation.x()),
+        static_cast<float>(orientation.y()),
+        static_cast<float>(orientation.z()));
+    glm::vec3 facing_direction =
+        glm::rotate(glm::normalize(render_orientation), glm::vec3(1.0f, 0.0f, 0.0f));
+    facing_direction.y = 0.0f;
+    const float length_squared = glm::dot(facing_direction, facing_direction);
+    if (length_squared <= 0.000001f)
+    {
+        return glm::vec3(1.0f, 0.0f, 0.0f);
+    }
+
+    return facing_direction / std::sqrt(length_squared);
 }
 }
 
@@ -80,8 +99,8 @@ int Client::Run(int argc, char** argv)
     controlled_pawn_server_id_.clear();
     camera_boon_.Reset();
     pending_move_command_.Clear();
-    last_sent_facing_orientation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-    last_sent_facing_orientation_valid_ = false;
+    last_sent_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
+    last_sent_facing_direction_valid_ = false;
     last_frame_time_ = std::chrono::steady_clock::now();
     last_move_sent_at_ = last_frame_time_;
 
@@ -191,7 +210,7 @@ void Client::ApplyControlledPatch(const grpcmmo::world::v1::EntityPatch& pawn_pa
     snapshot.pawn_id = pawn_patch.entity_id();
     snapshot.display_name = pawn_patch.metadata().display_name();
     snapshot.position = ToRenderPosition(pawn_patch);
-    snapshot.orientation = ToRenderOrientation(pawn_patch);
+    snapshot.facing_direction = ToFacingDirection(pawn_patch);
     snapshot.controlled = true;
     controlled_pawn_.ApplyReplication(snapshot);
 }
@@ -246,14 +265,15 @@ bool Client::Tick(frame::WindowInterface& window, float delta_seconds)
 
     if (Pawn* controlled_pawn = GetControlledPawn(); controlled_pawn != nullptr)
     {
-        const glm::quat local_facing_orientation =
-            glm::angleAxis(camera_boon_.GetYawRadians(), glm::vec3(0.0f, 1.0f, 0.0f));
-        controlled_pawn->SetLocalFacingOrientation(local_facing_orientation);
-        if (!last_sent_facing_orientation_valid_ ||
-            !NearlyEqualOrientation(local_facing_orientation, last_sent_facing_orientation_))
+        const glm::vec3 local_facing_direction(std::cos(camera_boon_.GetYawRadians()),
+                                               0.0f,
+                                               std::sin(camera_boon_.GetYawRadians()));
+        controlled_pawn->SetLocalFacingDirection(local_facing_direction);
+        if (!last_sent_facing_direction_valid_ ||
+            !NearlyEqualDirection(local_facing_direction, last_sent_facing_direction_))
         {
             MoveCommand facing_command;
-            facing_command.SetFacingOrientation(local_facing_orientation);
+            facing_command.SetFacingDirection(local_facing_direction);
             pending_move_command_.Accumulate(facing_command);
         }
         const MoveCommand move_command =
@@ -298,10 +318,10 @@ bool Client::SendMoveIfDue()
     const bool sent = session_.SendMove(pending_move_command_);
     if (sent)
     {
-        if (pending_move_command_.has_facing_orientation)
+        if (pending_move_command_.has_facing_direction)
         {
-            last_sent_facing_orientation_ = pending_move_command_.facing_orientation;
-            last_sent_facing_orientation_valid_ = true;
+            last_sent_facing_direction_ = pending_move_command_.facing_direction_unit;
+            last_sent_facing_direction_valid_ = true;
         }
         pending_move_command_.Clear();
     }

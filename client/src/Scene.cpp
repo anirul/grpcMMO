@@ -378,6 +378,7 @@ glm::mat4 MakeHiddenTransform()
                          glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
                          glm::vec3(0.01f));
 }
+
 } // namespace
 
 void Scene::Init()
