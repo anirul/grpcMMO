@@ -1,0 +1,80 @@
+name: Linux CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git-lfs \
+            ninja-build \
+            build-essential \
+            zip \
+            unzip \
+            xvfb \
+            libvulkan-dev \
+            libxi-dev \
+            libxmu-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libx11-xcb-dev \
+            libxcb1-dev \
+            libxcb-randr0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libwayland-dev \
+            wayland-protocols \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libglx-dev \
+            xorg-dev \
+            autoconf \
+            automake \
+            autoconf-archive \
+            libtool \
+            libtool-bin \
+            libltdl-dev \
+            gettext \
+            pkg-config \
+            gperf \
+            python3-jinja2
+
+      - name: Pull LFS assets
+        run: |
+          git lfs install
+          git lfs pull
+          git -C external/frame lfs pull
+
+      - name: Cache vcpkg artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            external/vcpkg/downloads
+            vcpkg_installed
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'CMakePresets.json', '.gitmodules') }}
+
+      - name: Bootstrap vcpkg
+        run: ./external/vcpkg/bootstrap-vcpkg.sh
+
+      - name: Configure
+        run: cmake --preset linux-debug --fresh -DGRPCMMO_REQUIRE_DATA_REPO=OFF
+
+      - name: Build
+        run: cmake --build --preset linux-debug
+
+      - name: Test
+        run: xvfb-run ctest --test-dir build/linux-debug -L grpcmmo --output-on-failure
