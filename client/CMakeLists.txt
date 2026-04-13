@@ -1,5 +1,29 @@
 find_package(absl CONFIG REQUIRED)
 
+add_library(grpcmmo_client_frame_deps INTERFACE)
+
+if(DEFINED FRAME_CORE_LIBS)
+  target_link_libraries(grpcmmo_client_frame_deps
+    INTERFACE
+      ${FRAME_LINK_GROUP_BEGIN}
+      ${FRAME_CORE_LIBS}
+      ${FRAME_VULKAN_LIBS}
+      FrameCommon
+      ${FRAME_LINK_GROUP_END}
+  )
+else()
+  target_link_libraries(grpcmmo_client_frame_deps
+    INTERFACE
+      Frame
+      FrameCommon
+      FrameFile
+      FrameJson
+      FrameOpenGL
+      FrameOpenGLFile
+      FrameVulkan
+  )
+endif()
+
 set(GRPCMMO_CLIENT_SOURCES
   src/AssetBootstrap.cpp
   src/Camera.cpp
@@ -56,13 +80,7 @@ target_link_libraries(grpcmmo_client_lib
   PUBLIC
     absl::flags
     absl::flags_parse
-    Frame
-    FrameCommon
-    FrameFile
-    FrameJson
-    FrameOpenGL
-    FrameOpenGLFile
-    FrameVulkan
+    grpcmmo_client_frame_deps
     grpcmmo_proto
     grpcmmo_shared
 )
