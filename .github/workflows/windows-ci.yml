@@ -24,13 +24,21 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
 
-      - name: Cache vcpkg artifacts
+      - name: Cache vcpkg downloads
         uses: actions/cache@v4
         with:
-          path: |
-            external/vcpkg/downloads
-            vcpkg_installed
-          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'CMakePresets.json', '.gitmodules') }}
+          path: external/vcpkg/downloads
+          key: ${{ runner.os }}-vcpkg-downloads-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-downloads-
+
+      - name: Cache vcpkg installed tree
+        uses: actions/cache@v4
+        with:
+          path: vcpkg_installed
+          key: ${{ runner.os }}-x64-windows-vcpkg-installed-${{ hashFiles('vcpkg.json', 'CMakePresets.json', '.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-x64-windows-vcpkg-installed-
 
       - name: Bootstrap vcpkg
         shell: pwsh
