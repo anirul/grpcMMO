@@ -2,25 +2,37 @@ find_package(absl CONFIG REQUIRED)
 
 add_library(grpcmmo_client_frame_deps INTERFACE)
 
-if(DEFINED FRAME_CORE_LIBS)
+set(GRPCMMO_CLIENT_FRAME_LIBS
+  Frame
+  FrameFile
+  FrameJson
+  FrameGui
+  FrameOpenGL
+  FrameOpenGLFile
+  FrameOpenGLGui
+  FrameVulkan
+  FrameVulkanJson
+  FrameVulkanGui
+  FrameProto
+  FrameCommon
+)
+
+if(UNIX AND NOT APPLE AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
   target_link_libraries(grpcmmo_client_frame_deps
     INTERFACE
-      ${FRAME_LINK_GROUP_BEGIN}
-      ${FRAME_CORE_LIBS}
-      ${FRAME_VULKAN_LIBS}
-      FrameCommon
-      ${FRAME_LINK_GROUP_END}
+      "$<LINK_GROUP:RESCAN,${GRPCMMO_CLIENT_FRAME_LIBS}>"
+  )
+elseif(UNIX AND NOT APPLE)
+  target_link_libraries(grpcmmo_client_frame_deps
+    INTERFACE
+      "-Wl,--start-group"
+      ${GRPCMMO_CLIENT_FRAME_LIBS}
+      "-Wl,--end-group"
   )
 else()
   target_link_libraries(grpcmmo_client_frame_deps
     INTERFACE
-      Frame
-      FrameCommon
-      FrameFile
-      FrameJson
-      FrameOpenGL
-      FrameOpenGLFile
-      FrameVulkan
+      ${GRPCMMO_CLIENT_FRAME_LIBS}
   )
 endif()
 
