@@ -7,6 +7,10 @@ on:
 jobs:
   build-and-test:
     runs-on: windows-latest
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      SCCACHE_CACHE_SIZE: "2G"
+      SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
 
     steps:
       - name: Checkout
@@ -16,6 +20,9 @@ jobs:
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Cache vcpkg artifacts
         uses: actions/cache@v4
@@ -31,7 +38,13 @@ jobs:
 
       - name: Configure
         shell: pwsh
-        run: cmake --preset windows-debug --fresh -DGRPCMMO_REQUIRE_DATA_REPO=OFF
+        run: >
+          cmake --preset windows-debug --fresh
+          -DGRPCMMO_REQUIRE_DATA_REPO=OFF
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded
+          -DCMAKE_POLICY_CMP0141=NEW
 
       - name: Build
         shell: pwsh
@@ -40,3 +53,8 @@ jobs:
       - name: Test
         shell: pwsh
         run: ctest --test-dir build\windows -C Debug -L grpcmmo --output-on-failure
+
+      - name: Show sccache stats
+        if: always()
+        shell: pwsh
+        run: $env:SCCACHE_PATH --show-stats

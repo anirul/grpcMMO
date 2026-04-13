@@ -7,6 +7,10 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      SCCACHE_CACHE_SIZE: "2G"
+      SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
 
     steps:
       - name: Checkout
@@ -14,6 +18,9 @@ jobs:
         with:
           lfs: true
           submodules: recursive
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Install build dependencies
         run: |
@@ -71,10 +78,18 @@ jobs:
         run: ./external/vcpkg/bootstrap-vcpkg.sh
 
       - name: Configure
-        run: cmake --preset linux-debug --fresh -DGRPCMMO_REQUIRE_DATA_REPO=OFF
+        run: >
+          cmake --preset linux-debug --fresh
+          -DGRPCMMO_REQUIRE_DATA_REPO=OFF
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build
         run: cmake --build --preset linux-debug
 
       - name: Test
         run: xvfb-run ctest --test-dir build/linux-debug -L grpcmmo --output-on-failure
+
+      - name: Show sccache stats
+        if: always()
+        run: ${SCCACHE_PATH} --show-stats
