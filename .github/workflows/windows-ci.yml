@@ -65,4 +65,4 @@ jobs:
       - name: Show sccache stats
         if: always()
         shell: pwsh
-        run: $env:SCCACHE_PATH --show-stats
+        run: '& $env:SCCACHE_PATH --show-stats'
