@@ -122,8 +122,6 @@ public:
                           << client_message.input_frame().move().world_displacement_m().x()
                           << " dz="
                           << client_message.input_frame().move().world_displacement_m().z()
-                          << " sprint="
-                          << (client_message.input_frame().move().sprint() ? "1" : "0")
                           << std::endl;
                 const auto batch = world_->ApplyInput(grant->session_id,
                                                       client_message.input_frame(),

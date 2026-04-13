@@ -19,9 +19,8 @@ message BeginSession {
 
 message MoveCommand {
   grpcmmo.world.v1.Vector3d world_displacement_m = 1;
-  bool sprint = 3;
   grpcmmo.world.v1.Vector3d facing_direction_unit = 6;
-  reserved 2, 4, 5;
+  reserved 2, 3, 4, 5;
 }
 
 enum ActionKind {

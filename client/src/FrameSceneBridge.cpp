@@ -1,4 +1,4 @@
-#include "Scene.hpp"
+#include "FrameSceneBridge.hpp"
 
 #include <algorithm>
 #include <array>
@@ -378,10 +378,9 @@ glm::mat4 MakeHiddenTransform()
                          glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
                          glm::vec3(0.01f));
 }
-
 } // namespace
 
-void Scene::Init()
+void FrameSceneBridge::Init()
 {
     window_ = nullptr;
     controlled_pawn_ = nullptr;
@@ -394,12 +393,12 @@ void Scene::Init()
     camera_boon_matrix_id_ = frame::NullId;
 }
 
-void Scene::End()
+void FrameSceneBridge::End()
 {
     Init();
 }
 
-void Scene::Tick(float /*delta_seconds*/)
+void FrameSceneBridge::Tick(float /*delta_seconds*/)
 {
     if (window_ == nullptr)
     {
@@ -420,25 +419,25 @@ void Scene::Tick(float /*delta_seconds*/)
     }
 }
 
-void Scene::SetDebugPoseTrace(bool enabled)
+void FrameSceneBridge::SetDebugPoseTrace(bool enabled)
 {
     debug_pose_trace_ = enabled;
 }
 
-void Scene::Attach(frame::WindowInterface* window)
+void FrameSceneBridge::Attach(frame::WindowInterface* window)
 {
     window_ = window;
 }
 
-void Scene::SetControlledState(const Pawn* controlled_pawn,
-                               const CameraBoon* camera_boon)
+void FrameSceneBridge::SetViewState(const Pawn* controlled_pawn,
+                                    const CameraBoon* camera_boon)
 {
     controlled_pawn_ = controlled_pawn;
     camera_boon_ = camera_boon;
 }
 
-CameraPose Scene::BuildCameraPose(const Pawn* controlled_pawn,
-                                  const CameraBoon& camera_boon) const
+CameraPose FrameSceneBridge::BuildFollowCameraPose(const Pawn* controlled_pawn,
+                                                   const CameraBoon& camera_boon) const
 {
     const float horizontal_distance =
         camera_boon.GetDistanceMeters() * std::cos(camera_boon.GetPitchRadians());
@@ -469,7 +468,7 @@ CameraPose Scene::BuildCameraPose(const Pawn* controlled_pawn,
     return pose;
 }
 
-void Scene::CacheHandles(frame::LevelInterface& level)
+void FrameSceneBridge::CacheHandles(frame::LevelInterface& level)
 {
     ground_holder_matrix_id_ = level.GetIdFromName("ground_holder");
     guide_holder_matrix_id_ = level.GetIdFromName("guide_holder");
@@ -478,14 +477,14 @@ void Scene::CacheHandles(frame::LevelInterface& level)
     camera_boon_matrix_id_ = level.GetIdFromName("camera_boon_matrix");
 }
 
-glm::vec3 Scene::BuildCameraForwardOnGround(const CameraBoon& camera_boon) const
+glm::vec3 FrameSceneBridge::BuildCameraForwardOnGround(const CameraBoon& camera_boon) const
 {
     return glm::vec3(std::cos(camera_boon.GetYawRadians()),
                      0.0f,
                      std::sin(camera_boon.GetYawRadians()));
 }
 
-glm::vec3 Scene::BuildCameraBoonLocalOffset(const CameraBoon& camera_boon) const
+glm::vec3 FrameSceneBridge::BuildCameraBoonLocalOffset(const CameraBoon& camera_boon) const
 {
     const float horizontal_distance =
         camera_boon.GetDistanceMeters() * std::cos(camera_boon.GetPitchRadians());
@@ -496,8 +495,8 @@ glm::vec3 Scene::BuildCameraBoonLocalOffset(const CameraBoon& camera_boon) const
                      0.0f);
 }
 
-void Scene::UpdateWorldHolders(frame::LevelInterface& level,
-                               const Pawn* controlled_pawn) const
+void FrameSceneBridge::UpdateWorldHolders(frame::LevelInterface& level,
+                                          const Pawn* /*controlled_pawn*/) const
 {
     const glm::mat4 holder_transform =
         MakeTransform(glm::vec3(0.0f),
@@ -508,9 +507,9 @@ void Scene::UpdateWorldHolders(frame::LevelInterface& level,
     SetNodeMatrix(level, landmark_holder_matrix_id_, holder_transform);
 }
 
-void Scene::UpdatePawnRoot(frame::LevelInterface& level,
-                           const Pawn* controlled_pawn,
-                           const CameraBoon& camera_boon) const
+void FrameSceneBridge::UpdatePawnRoot(frame::LevelInterface& level,
+                                      const Pawn* controlled_pawn,
+                                      const CameraBoon& camera_boon) const
 {
     if (controlled_pawn == nullptr)
     {
@@ -556,7 +555,7 @@ void Scene::UpdatePawnRoot(frame::LevelInterface& level,
     }
 }
 
-frame::proto::Level Scene::BuildLevelProto() const
+frame::proto::Level FrameSceneBridge::BuildLevelProto() const
 {
     frame::proto::Level level;
     level.set_name("grpcMMOThirdPerson");

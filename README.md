@@ -188,7 +188,6 @@ Controls:
 - `W` / `S`: move forward and backward
 - `A` / `D`: strafe
 - `Q` / `E`: yaw left and right
-- `Shift`: sprint
 - `P`: ping
 - `Escape`: quit
 

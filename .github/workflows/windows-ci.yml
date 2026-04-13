@@ -1,0 +1,42 @@
+name: Windows CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Cache vcpkg artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            external/vcpkg/downloads
+            vcpkg_installed
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'CMakePresets.json', '.gitmodules') }}
+
+      - name: Bootstrap vcpkg
+        shell: pwsh
+        run: .\external\vcpkg\bootstrap-vcpkg.bat
+
+      - name: Configure
+        shell: pwsh
+        run: cmake --preset windows-debug --fresh -DGRPCMMO_REQUIRE_DATA_REPO=OFF
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build --preset windows-debug
+
+      - name: Test
+        shell: pwsh
+        run: ctest --test-dir build\windows -C Debug -L grpcmmo --output-on-failure
