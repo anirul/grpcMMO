@@ -6,8 +6,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+#include "Actor.hpp"
 #include "MoveCommand.hpp"
-#include "Object.hpp"
 
 namespace grpcmmo::client
 {
@@ -20,7 +20,7 @@ struct PawnSnapshot
     bool controlled = false;
 };
 
-class Pawn : public Object
+class Pawn : public Actor
 {
 public:
     void Init() override;
@@ -38,12 +38,12 @@ public:
     [[nodiscard]] float GetRenderYawRadians() const;
     [[nodiscard]] bool IsControlled() const;
     [[nodiscard]] glm::vec3 GetSurfaceUp() const;
+    [[nodiscard]] const char* GetActorClassName() const override;
 
 private:
     void Reconcile(float delta_seconds);
+    void SyncRootComponentFromRenderState();
 
-    std::string entity_id_;
-    std::string display_name_;
     glm::vec3 authoritative_position_ = glm::vec3(0.0f);
     glm::vec3 authoritative_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
     glm::vec3 predicted_position_ = glm::vec3(0.0f);

@@ -9,8 +9,7 @@ namespace grpcmmo::game
 {
 namespace
 {
-constexpr double kWalkSpeedMetersPerSecond = 4.0;
-constexpr double kSprintSpeedMetersPerSecond = 7.0;
+constexpr double kMoveSpeedMetersPerSecond = 4.0;
 constexpr double kDefaultInputStepSeconds = 0.05;
 constexpr double kMinInputStepSeconds = 1.0 / 120.0;
 constexpr double kMaxInputStepSeconds = 0.10;
@@ -132,9 +131,7 @@ std::optional<grpcmmo::world::v1::ReplicationBatch> AuthoritativeWorld::ApplyInp
     input_step_seconds =
         std::clamp(input_step_seconds, kMinInputStepSeconds, kMaxInputStepSeconds);
 
-    const double speed = move.sprint() ? kSprintSpeedMetersPerSecond
-                                       : kWalkSpeedMetersPerSecond;
-    const double max_distance_m = speed * input_step_seconds;
+    const double max_distance_m = kMoveSpeedMetersPerSecond * input_step_seconds;
     double requested_dx = move.world_displacement_m().x();
     double requested_dz = move.world_displacement_m().z();
     const double requested_distance =

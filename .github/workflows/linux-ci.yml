@@ -1,0 +1,103 @@
+name: Linux CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      SCCACHE_CACHE_SIZE: "2G"
+      SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git-lfs \
+            ninja-build \
+            build-essential \
+            zip \
+            unzip \
+            xvfb \
+            libvulkan-dev \
+            libxi-dev \
+            libxmu-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libx11-xcb-dev \
+            libxcb1-dev \
+            libxcb-randr0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libwayland-dev \
+            wayland-protocols \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libglx-dev \
+            xorg-dev \
+            autoconf \
+            automake \
+            autoconf-archive \
+            libtool \
+            libtool-bin \
+            libltdl-dev \
+            gettext \
+            pkg-config \
+            gperf \
+            python3-jinja2
+
+      - name: Pull LFS assets
+        run: |
+          git lfs install
+          git lfs pull
+          git -C external/frame lfs pull
+
+      - name: Cache vcpkg downloads
+        uses: actions/cache@v4
+        with:
+          path: external/vcpkg/downloads
+          key: ${{ runner.os }}-vcpkg-downloads-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-downloads-
+
+      - name: Cache vcpkg installed tree
+        uses: actions/cache@v4
+        with:
+          path: vcpkg_installed
+          key: ${{ runner.os }}-x64-linux-vcpkg-installed-${{ hashFiles('vcpkg.json', 'CMakePresets.json', '.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-x64-linux-vcpkg-installed-
+
+      - name: Bootstrap vcpkg
+        run: ./external/vcpkg/bootstrap-vcpkg.sh
+
+      - name: Configure
+        run: >
+          cmake --preset linux-debug --fresh
+          -DGRPCMMO_REQUIRE_DATA_REPO=OFF
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+
+      - name: Build
+        run: cmake --build --preset linux-debug
+
+      - name: Test
+        run: xvfb-run ctest --test-dir build/linux-debug -L grpcmmo --output-on-failure
+
+      - name: Show sccache stats
+        if: always()
+        run: ${SCCACHE_PATH} --show-stats

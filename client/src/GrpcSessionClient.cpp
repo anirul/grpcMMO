@@ -111,7 +111,6 @@ bool GrpcSessionClient::SendMove(const MoveCommand& move_command)
         static_cast<double>(move_command.world_displacement_m.y));
     move->mutable_world_displacement_m()->set_z(
         static_cast<double>(move_command.world_displacement_m.z));
-    move->set_sprint(move_command.sprint);
     if (move_command.has_facing_direction)
     {
         auto* facing_direction = move->mutable_facing_direction_unit();

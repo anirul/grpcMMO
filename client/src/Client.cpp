@@ -2,9 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <iostream>
-#include <string>
 
 #include "absl/flags/flag.h"
 #include "frame/common/application.h"
@@ -26,47 +24,6 @@ namespace grpcmmo::client
 namespace
 {
 constexpr glm::uvec2 kDefaultWindowSize{1280u, 720u};
-
-bool NearlyEqualDirection(const glm::vec3& lhs, const glm::vec3& rhs)
-{
-    const float lhs_length_squared = glm::dot(lhs, lhs);
-    const float rhs_length_squared = glm::dot(rhs, rhs);
-    if (lhs_length_squared <= 0.000001f || rhs_length_squared <= 0.000001f)
-    {
-        return lhs_length_squared <= 0.000001f && rhs_length_squared <= 0.000001f;
-    }
-
-    const float alignment =
-        glm::dot(lhs / std::sqrt(lhs_length_squared), rhs / std::sqrt(rhs_length_squared));
-    return alignment >= 0.99995f;
-}
-
-glm::vec3 ToRenderPosition(const grpcmmo::world::v1::EntityPatch& pawn_patch)
-{
-    return glm::vec3(static_cast<float>(pawn_patch.transform().position_m().x()),
-                     0.0f,
-                     static_cast<float>(pawn_patch.transform().position_m().z()));
-}
-
-glm::vec3 ToFacingDirection(const grpcmmo::world::v1::EntityPatch& pawn_patch)
-{
-    const auto& orientation = pawn_patch.transform().orientation();
-    const glm::quat render_orientation(
-        static_cast<float>(orientation.w()),
-        static_cast<float>(orientation.x()),
-        static_cast<float>(orientation.y()),
-        static_cast<float>(orientation.z()));
-    glm::vec3 facing_direction =
-        glm::rotate(glm::normalize(render_orientation), glm::vec3(1.0f, 0.0f, 0.0f));
-    facing_direction.y = 0.0f;
-    const float length_squared = glm::dot(facing_direction, facing_direction);
-    if (length_squared <= 0.000001f)
-    {
-        return glm::vec3(1.0f, 0.0f, 0.0f);
-    }
-
-    return facing_direction / std::sqrt(length_squared);
-}
 }
 
 int Client::Run(int argc, char** argv)
@@ -83,28 +40,17 @@ int Client::Run(int argc, char** argv)
 
     asset_bootstrap_.EnsureFrameAssetsAvailable();
     const auto level_json_path =
-        asset_bootstrap_.WriteGeneratedLevelJson(scene_.BuildLevelProto());
+        asset_bootstrap_.WriteGeneratedLevelJson(client_world_.BuildLevelProto());
     app.Startup(level_json_path);
     app.GetWindow().SetWindowTitle("grpcMMO - Third Person");
-
-    controller_ = std::make_unique<Controller>();
-    controller_ptr_ = controller_.get();
-    app.GetWindow().SetInputInterface(std::move(controller_));
-    InitObjects(app.GetWindow());
+    client_world_.Attach(app.GetWindow());
+    client_world_.Init();
 
     running_ = true;
-    session_ready_received_ = false;
-    controlled_pawn_.Init();
-    controlled_pawn_available_ = false;
-    controlled_pawn_server_id_.clear();
-    camera_boon_.Reset();
-    pending_move_command_.Clear();
-    last_sent_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
-    last_sent_facing_direction_valid_ = false;
     last_frame_time_ = std::chrono::steady_clock::now();
     last_move_sent_at_ = last_frame_time_;
 
-    const int exit_code = static_cast<int>(app.Run([this, &window = app.GetWindow()]()
+    const int exit_code = static_cast<int>(app.Run([this]()
                                                    {
                                                        const auto now = std::chrono::steady_clock::now();
                                                        const float delta_seconds =
@@ -117,7 +63,7 @@ int Client::Run(int argc, char** argv)
                                                            return false;
                                                        }
 
-                                                       if (!Tick(window, delta_seconds))
+                                                       if (!Tick(delta_seconds))
                                                        {
                                                            return false;
                                                        }
@@ -128,7 +74,7 @@ int Client::Run(int argc, char** argv)
                                                        }
                                                        return running_;
                                                    }));
-    EndObjects();
+    client_world_.End();
     return exit_code;
 }
 
@@ -146,8 +92,9 @@ void Client::LoadFlags()
         std::chrono::milliseconds(std::max(16, absl::GetFlag(FLAGS_move_send_interval_ms)));
     auto_move_duration_ =
         std::chrono::duration<float>(static_cast<float>(std::max(0.0, absl::GetFlag(FLAGS_auto_move_seconds))));
-    debug_pose_trace_ = absl::GetFlag(FLAGS_debug_pose_trace);
-    scene_.SetDebugPoseTrace(debug_pose_trace_);
+    client_world_.Configure(
+        ClientWorldConfig{auto_move_duration_,
+                          absl::GetFlag(FLAGS_debug_pose_trace)});
     frame::Logger::GetInstance()->set_level(spdlog::level::warn);
     frame::Logger::GetInstance()->flush_on(spdlog::level::warn);
 }
@@ -159,30 +106,14 @@ void Client::PumpNetworkMessages()
                               switch (message.payload_case())
                               {
                               case grpcmmo::session::v1::ServerMessage::kSessionReady:
-                                  if (!session_ready_received_)
-                                  {
-                                      session_ready_received_ = true;
-                                      session_ready_at_ = std::chrono::steady_clock::now();
-                                  }
-                                  controlled_pawn_server_id_ =
-                                      message.session_ready().controlled_entity_id();
-                                  controlled_pawn_available_ = true;
-                                  ApplyControlledPatch(
-                                      message.session_ready().initial_controlled_entity());
+                                  client_world_.OnSessionReady(message.session_ready());
                                   std::cout << "[session] ready pawn="
-                                            << controlled_pawn_server_id_
+                                            << message.session_ready().controlled_entity_id()
                                             << " zone=" << message.session_ready().zone_id()
                                             << std::endl;
                                   break;
                               case grpcmmo::session::v1::ServerMessage::kReplication:
-                                  for (const auto& pawn_patch : message.replication().entities())
-                                  {
-                                      if (pawn_patch.entity_id() == controlled_pawn_server_id_)
-                                      {
-                                          ApplyControlledPatch(pawn_patch);
-                                          break;
-                                      }
-                                  }
+                                  client_world_.ApplyReplicationBatch(message.replication());
                                   break;
                               case grpcmmo::session::v1::ServerMessage::kNotice:
                                   std::cout << "[notice] "
@@ -204,106 +135,25 @@ void Client::PumpNetworkMessages()
     }
 }
 
-void Client::ApplyControlledPatch(const grpcmmo::world::v1::EntityPatch& pawn_patch)
+bool Client::Tick(float delta_seconds)
 {
-    PawnSnapshot snapshot;
-    snapshot.pawn_id = pawn_patch.entity_id();
-    snapshot.display_name = pawn_patch.metadata().display_name();
-    snapshot.position = ToRenderPosition(pawn_patch);
-    snapshot.facing_direction = ToFacingDirection(pawn_patch);
-    snapshot.controlled = true;
-    controlled_pawn_.ApplyReplication(snapshot);
-}
-
-void Client::InitObjects(frame::WindowInterface& window)
-{
-    if (controller_ptr_ != nullptr)
-    {
-        controller_ptr_->Init();
-    }
-    controlled_pawn_.Init();
-    controlled_pawn_available_ = false;
-    camera_boon_.Init();
-    scene_.Init();
-    scene_.Attach(&window);
-    camera_.Attach(&window);
-    camera_.Init();
-}
-
-void Client::EndObjects()
-{
-    controlled_pawn_.End();
-    controlled_pawn_available_ = false;
-    controlled_pawn_server_id_.clear();
-    camera_.End();
-    scene_.End();
-    camera_boon_.End();
-    if (controller_ptr_ != nullptr)
-    {
-        controller_ptr_->End();
-    }
-}
-
-bool Client::Tick(frame::WindowInterface& window, float delta_seconds)
-{
-    if (controller_ptr_ != nullptr)
-    {
-        controller_ptr_->Tick(delta_seconds);
-    }
-    const Controller::FrameInput frame_input = BuildFrameInput();
-    if (frame_input.exit_requested)
+    client_world_.Tick(delta_seconds);
+    if (client_world_.IsExitRequested())
     {
         running_ = false;
         return false;
     }
-
-    camera_boon_.Tick(delta_seconds);
-    if (controller_ptr_ != nullptr)
-    {
-        controller_ptr_->DriveCamera(camera_boon_, frame_input);
-    }
-
-    if (Pawn* controlled_pawn = GetControlledPawn(); controlled_pawn != nullptr)
-    {
-        const glm::vec3 local_facing_direction(std::cos(camera_boon_.GetYawRadians()),
-                                               0.0f,
-                                               std::sin(camera_boon_.GetYawRadians()));
-        controlled_pawn->SetLocalFacingDirection(local_facing_direction);
-        if (!last_sent_facing_direction_valid_ ||
-            !NearlyEqualDirection(local_facing_direction, last_sent_facing_direction_))
-        {
-            MoveCommand facing_command;
-            facing_command.SetFacingDirection(local_facing_direction);
-            pending_move_command_.Accumulate(facing_command);
-        }
-        const MoveCommand move_command =
-            controller_ptr_ != nullptr
-                ? controller_ptr_->DrivePawn(
-                      *controlled_pawn, camera_boon_, frame_input, delta_seconds)
-                : MoveCommand{};
-        pending_move_command_.Accumulate(move_command);
-    }
-
-    if (controlled_pawn_available_)
-    {
-        controlled_pawn_.Tick(delta_seconds);
-    }
-
-    scene_.SetControlledState(GetControlledPawn(), &camera_boon_);
-    scene_.Tick(delta_seconds);
-    camera_.SetPose(scene_.BuildCameraPose(GetControlledPawn(), camera_boon_));
-    camera_.Tick(delta_seconds);
     return true;
 }
 
 bool Client::SendMoveIfDue()
 {
-    if (!controlled_pawn_available_ || controlled_pawn_server_id_.empty())
+    if (!client_world_.HasControlledPawn())
     {
         return true;
     }
 
-    if (!pending_move_command_.HasSignal())
+    if (!client_world_.HasPendingMoveCommand())
     {
         return true;
     }
@@ -315,57 +165,11 @@ bool Client::SendMoveIfDue()
     }
 
     last_move_sent_at_ = now;
-    const bool sent = session_.SendMove(pending_move_command_);
+    const bool sent = session_.SendMove(client_world_.GetPendingMoveCommand());
     if (sent)
     {
-        if (pending_move_command_.has_facing_direction)
-        {
-            last_sent_facing_direction_ = pending_move_command_.facing_direction_unit;
-            last_sent_facing_direction_valid_ = true;
-        }
-        pending_move_command_.Clear();
+        client_world_.OnMoveSent();
     }
     return sent;
-}
-
-Controller::FrameInput Client::BuildFrameInput() const
-{
-    Controller::FrameInput frame_input =
-        controller_ptr_ != nullptr ? controller_ptr_->ConsumeFrameInput()
-                                   : Controller::FrameInput{};
-
-    if (!session_ready_received_)
-    {
-        return frame_input;
-    }
-
-    const float elapsed_seconds = std::chrono::duration<float>(
-        std::chrono::steady_clock::now() - session_ready_at_).count();
-    const bool auto_move_active =
-        auto_move_duration_.count() > 0.0f &&
-        elapsed_seconds <= auto_move_duration_.count();
-    if (auto_move_active)
-    {
-        frame_input.move_forward = 1.0f;
-    }
-    return frame_input;
-}
-
-Pawn* Client::GetControlledPawn()
-{
-    if (!controlled_pawn_available_)
-    {
-        return nullptr;
-    }
-    return &controlled_pawn_;
-}
-
-const Pawn* Client::GetControlledPawn() const
-{
-    if (!controlled_pawn_available_)
-    {
-        return nullptr;
-    }
-    return &controlled_pawn_;
 }
 } // namespace grpcmmo::client

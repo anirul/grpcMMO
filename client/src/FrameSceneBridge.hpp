@@ -21,19 +21,18 @@ class Level;
 
 namespace grpcmmo::client
 {
-class Scene : public Object
+class FrameSceneBridge : public Object
 {
 public:
     void Attach(frame::WindowInterface* window);
-    void SetControlledState(const Pawn* controlled_pawn,
-                            const CameraBoon* camera_boon);
+    void SetViewState(const Pawn* controlled_pawn, const CameraBoon* camera_boon);
 
     void Init() override;
     void End() override;
     void Tick(float delta_seconds) override;
 
     void SetDebugPoseTrace(bool enabled);
-    [[nodiscard]] CameraPose BuildCameraPose(
+    [[nodiscard]] CameraPose BuildFollowCameraPose(
         const Pawn* controlled_pawn,
         const CameraBoon& camera_boon) const;
     [[nodiscard]] frame::proto::Level BuildLevelProto() const;

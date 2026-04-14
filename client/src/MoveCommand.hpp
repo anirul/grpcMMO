@@ -11,7 +11,6 @@ struct MoveCommand
     glm::vec3 world_displacement_m = glm::vec3(0.0f);
     glm::vec3 facing_direction_unit = glm::vec3(1.0f, 0.0f, 0.0f);
     bool has_facing_direction = false;
-    bool sprint = false;
 
     [[nodiscard]] bool HasTranslation() const
     {
@@ -31,7 +30,6 @@ struct MoveCommand
             facing_direction_unit = other.facing_direction_unit;
             has_facing_direction = true;
         }
-        sprint = sprint || other.sprint;
     }
 
     void SetFacingDirection(const glm::vec3& direction)
