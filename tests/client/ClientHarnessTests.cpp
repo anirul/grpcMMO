@@ -12,8 +12,10 @@
 #include "FrameSceneBridge.hpp"
 #include "Pawn.hpp"
 #include "PlayerController.hpp"
+#include "TerrainPatchSampler.hpp"
 #include "WorldActor.hpp"
 #include "frame/json/proto.h"
+#include "grpcmmo/shared/WorkspaceConfig.hpp"
 #include "world/v1/replication.pb.h"
 
 namespace grpcmmo::client
@@ -174,8 +176,8 @@ TEST(PlayerControllerTest, NormalizesDiagonalMovementAndClampsMovementStep)
     EXPECT_NEAR(glm::length(movement), 1.0f, 0.0001f);
 
     const MoveCommand move_command = controller.DrivePawn(frame_input, 1.0f);
-    const glm::vec2 displacement(move_command.world_displacement_m.x,
-                                 move_command.world_displacement_m.z);
+    const glm::dvec2 displacement(move_command.world_displacement_m.x,
+                                  move_command.world_displacement_m.z);
     EXPECT_NEAR(glm::length(displacement), 0.2f, 0.0001f);
 
     controller.End();
@@ -228,8 +230,8 @@ TEST(PlayerControllerTest, DrivePawnFollowsCameraYawForForwardMovement)
     move_input.move_forward = 1.0f;
     const MoveCommand move_command = controller.DrivePawn(move_input, 0.05f);
 
-    EXPECT_NEAR(move_command.world_displacement_m.x, 0.0f, 0.0001f);
-    EXPECT_GT(move_command.world_displacement_m.z, 0.19f);
+    EXPECT_NEAR(move_command.world_displacement_m.x, 0.0, 0.0001);
+    EXPECT_GT(move_command.world_displacement_m.z, 0.19);
 
     controller.End();
     pawn.End();
@@ -252,7 +254,7 @@ TEST(PawnTest, UncontrolledReplicationSnapsAndIgnoresLocalMove)
     ExpectVec3Near(pawn.GetRenderFacingDirection(), snapshot.facing_direction);
 
     MoveCommand move_command;
-    move_command.world_displacement_m = glm::vec3(3.0f, 0.0f, 0.0f);
+    move_command.world_displacement_m = glm::dvec3(3.0, 0.0, 0.0);
     pawn.ApplyMove(move_command);
     ExpectVec3Near(pawn.GetRenderPosition(), snapshot.position);
 
@@ -270,7 +272,7 @@ TEST(PawnTest, ControlledPawnAppliesLocalFacingAndKeepsPredictionBeforeIdleCorre
     EXPECT_NEAR(pawn.GetRenderYawRadians(), glm::half_pi<float>(), 0.0001f);
 
     MoveCommand move_command;
-    move_command.world_displacement_m = glm::vec3(1.0f, 0.0f, 0.0f);
+    move_command.world_displacement_m = glm::dvec3(1.0, 0.0, 0.0);
     pawn.ApplyMove(move_command);
     EXPECT_NEAR(pawn.GetRenderPosition().x, 1.0f, 0.0001f);
 
@@ -281,6 +283,20 @@ TEST(PawnTest, ControlledPawnAppliesLocalFacingAndKeepsPredictionBeforeIdleCorre
 
     EXPECT_NEAR(pawn.GetRenderPosition().x, 1.0f, 0.0001f);
     pawn.End();
+}
+
+TEST(TerrainPatchSamplerTest, GroundsPreviewPatchCenterToSurface)
+{
+    if (!grpcmmo::shared::kHaveDataRepo)
+    {
+        GTEST_SKIP() << "grpcMMO-data repo is not configured for this workspace";
+    }
+
+    TerrainPatchSampler sampler;
+    ASSERT_TRUE(sampler.LoadPreviewPatch());
+
+    const glm::vec3 grounded = sampler.GroundLocalPosition(glm::vec3(0.0f, 12.0f, 0.0f));
+    ExpectVec3Near(grounded, glm::vec3(0.0f, 0.0f, 0.0f), 0.0005f);
 }
 
 TEST(FrameSceneBridgeTest, BuildFollowCameraPoseTargetsControlledPawn)

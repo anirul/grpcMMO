@@ -86,14 +86,14 @@ bool GrpcSessionClient::Connect(const ClientConnectionConfig& config,
         return false;
     }
 
+    StartWriter();
     StartReader();
     return true;
 }
 
 bool GrpcSessionClient::SendMove(const MoveCommand& move_command)
 {
-    std::lock_guard<std::mutex> lock(write_mutex_);
-    if (!session_stream_)
+    if (!open_.load(std::memory_order_relaxed))
     {
         return false;
     }
@@ -105,33 +105,29 @@ bool GrpcSessionClient::SendMove(const MoveCommand& move_command)
     input->set_client_time_ms(grpcmmo::shared::NowMs());
     input->set_input_sequence(sequence);
     auto* move = input->mutable_move();
-    move->mutable_world_displacement_m()->set_x(
-        static_cast<double>(move_command.world_displacement_m.x));
-    move->mutable_world_displacement_m()->set_y(
-        static_cast<double>(move_command.world_displacement_m.y));
-    move->mutable_world_displacement_m()->set_z(
-        static_cast<double>(move_command.world_displacement_m.z));
+    move->mutable_world_displacement_m()->set_x(move_command.world_displacement_m.x);
+    move->mutable_world_displacement_m()->set_y(move_command.world_displacement_m.y);
+    move->mutable_world_displacement_m()->set_z(move_command.world_displacement_m.z);
     if (move_command.has_facing_direction)
     {
         auto* facing_direction = move->mutable_facing_direction_unit();
-        facing_direction->set_x(static_cast<double>(move_command.facing_direction_unit.x));
-        facing_direction->set_y(static_cast<double>(move_command.facing_direction_unit.y));
-        facing_direction->set_z(static_cast<double>(move_command.facing_direction_unit.z));
+        facing_direction->set_x(move_command.facing_direction_unit.x);
+        facing_direction->set_y(move_command.facing_direction_unit.y);
+        facing_direction->set_z(move_command.facing_direction_unit.z);
     }
-    return session_stream_->Write(input_message);
+    return EnqueueMessage(std::move(input_message));
 }
 
 bool GrpcSessionClient::SendPing()
 {
-    std::lock_guard<std::mutex> lock(write_mutex_);
-    if (!session_stream_)
+    if (!open_.load(std::memory_order_relaxed))
     {
         return false;
     }
 
     grpcmmo::session::v1::ClientMessage ping_message;
     ping_message.mutable_ping()->set_nonce("frame-client-ping");
-    return session_stream_->Write(ping_message);
+    return EnqueueMessage(std::move(ping_message));
 }
 
 void GrpcSessionClient::PollMessages(
@@ -151,6 +147,9 @@ void GrpcSessionClient::PollMessages(
 
 grpc::Status GrpcSessionClient::Shutdown()
 {
+    writer_stop_requested_.store(true, std::memory_order_relaxed);
+    outgoing_queue_cv_.notify_all();
+
     {
         std::lock_guard<std::mutex> lock(write_mutex_);
         if (session_context_)
@@ -171,6 +170,18 @@ grpc::Status GrpcSessionClient::Shutdown()
         }
     }
 
+    if (writer_thread_.joinable())
+    {
+        if (writer_thread_.get_id() == std::this_thread::get_id())
+        {
+            writer_thread_.detach();
+        }
+        else
+        {
+            writer_thread_.join();
+        }
+    }
+
     grpc::Status status = grpc::Status::OK;
     {
         std::lock_guard<std::mutex> lock(write_mutex_);
@@ -188,9 +199,14 @@ grpc::Status GrpcSessionClient::Shutdown()
         std::lock_guard<std::mutex> lock(queue_mutex_);
         pending_messages_.clear();
     }
+    {
+        std::lock_guard<std::mutex> lock(outgoing_queue_mutex_);
+        pending_outgoing_messages_.clear();
+    }
 
     next_input_sequence_.store(1, std::memory_order_relaxed);
     open_.store(false, std::memory_order_relaxed);
+    writer_stop_requested_.store(false, std::memory_order_relaxed);
     return status;
 }
 
@@ -313,5 +329,60 @@ void GrpcSessionClient::StartReader()
                                      }
                                      open_.store(false, std::memory_order_relaxed);
                                  });
+}
+
+void GrpcSessionClient::StartWriter()
+{
+    writer_stop_requested_.store(false, std::memory_order_relaxed);
+    writer_thread_ = std::thread([this]()
+                                 {
+                                     for (;;)
+                                     {
+                                         grpcmmo::session::v1::ClientMessage message;
+                                         {
+                                             std::unique_lock<std::mutex> lock(outgoing_queue_mutex_);
+                                             outgoing_queue_cv_.wait(lock,
+                                                                     [this]()
+                                                                     {
+                                                                         return writer_stop_requested_.load(std::memory_order_relaxed) ||
+                                                                                !pending_outgoing_messages_.empty();
+                                                                     });
+
+                                             if (pending_outgoing_messages_.empty())
+                                             {
+                                                 if (writer_stop_requested_.load(std::memory_order_relaxed))
+                                                 {
+                                                     break;
+                                                 }
+                                                 continue;
+                                             }
+
+                                             message = std::move(pending_outgoing_messages_.front());
+                                             pending_outgoing_messages_.pop_front();
+                                         }
+
+                                         std::lock_guard<std::mutex> lock(write_mutex_);
+                                         if (!session_stream_ || !session_stream_->Write(message))
+                                         {
+                                             open_.store(false, std::memory_order_relaxed);
+                                             break;
+                                         }
+                                     }
+                                 });
+}
+
+bool GrpcSessionClient::EnqueueMessage(grpcmmo::session::v1::ClientMessage&& message)
+{
+    if (!open_.load(std::memory_order_relaxed))
+    {
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(outgoing_queue_mutex_);
+        pending_outgoing_messages_.push_back(std::move(message));
+    }
+    outgoing_queue_cv_.notify_one();
+    return true;
 }
 } // namespace grpcmmo::client

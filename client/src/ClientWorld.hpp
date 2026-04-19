@@ -15,6 +15,7 @@
 #include "FrameSceneBridge.hpp"
 #include "MoveCommand.hpp"
 #include "PlayerController.hpp"
+#include "TerrainPatchSampler.hpp"
 #include "WorldActor.hpp"
 #include "session/v1/session.pb.h"
 #include "world/v1/replication.pb.h"
@@ -60,6 +61,9 @@ private:
     using ReplicatedActorMap = std::unordered_map<std::string, std::unique_ptr<Actor>>;
 
     [[nodiscard]] PlayerController::FrameInput BuildFrameInput() const;
+    [[nodiscard]] glm::vec3 GroundRenderPosition(const glm::vec3& render_position) const;
+    void AdvanceControlledPrediction(const MoveCommand& move_command);
+    void SyncControlledPawnRenderState();
     void BootstrapLocalWorld();
     void ClearLocalWorldActors();
     void ClearReplicatedActors();
@@ -80,10 +84,14 @@ private:
     std::vector<std::unique_ptr<StaticPropActor>> static_props_{};
     std::vector<std::unique_ptr<InteractivePropActor>> interactive_props_{};
     ReplicatedActorMap replicated_actors_{};
+    TerrainPatchSampler terrain_sampler_{};
     std::chrono::steady_clock::time_point session_ready_at_{};
     std::string controlled_entity_id_{};
     MoveCommand pending_move_command_{};
     glm::vec3 last_sent_facing_direction_{1.0f, 0.0f, 0.0f};
+    glm::dvec3 controlled_authoritative_world_position_{0.0, 0.0, 0.0};
+    glm::dvec3 controlled_predicted_world_position_{0.0, 0.0, 0.0};
+    bool controlled_world_position_valid_ = false;
     bool last_sent_facing_direction_valid_ = false;
     bool exit_requested_ = false;
     bool session_ready_received_ = false;

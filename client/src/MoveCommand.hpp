@@ -8,13 +8,13 @@ namespace grpcmmo::client
 {
 struct MoveCommand
 {
-    glm::vec3 world_displacement_m = glm::vec3(0.0f);
-    glm::vec3 facing_direction_unit = glm::vec3(1.0f, 0.0f, 0.0f);
+    glm::dvec3 world_displacement_m = glm::dvec3(0.0);
+    glm::dvec3 facing_direction_unit = glm::dvec3(1.0, 0.0, 0.0);
     bool has_facing_direction = false;
 
     [[nodiscard]] bool HasTranslation() const
     {
-        return glm::dot(world_displacement_m, world_displacement_m) > 0.000001f;
+        return glm::dot(world_displacement_m, world_displacement_m) > 0.000001;
     }
 
     [[nodiscard]] bool HasSignal() const
@@ -32,16 +32,15 @@ struct MoveCommand
         }
     }
 
-    void SetFacingDirection(const glm::vec3& direction)
+    void SetFacingDirection(const glm::dvec3& direction)
     {
-        const glm::vec3 horizontal(direction.x, 0.0f, direction.z);
-        const float length_squared = glm::dot(horizontal, horizontal);
-        if (length_squared <= 0.000001f)
+        const double length_squared = glm::dot(direction, direction);
+        if (length_squared <= 0.000001)
         {
             return;
         }
 
-        facing_direction_unit = horizontal / std::sqrt(length_squared);
+        facing_direction_unit = direction / std::sqrt(length_squared);
         has_facing_direction = true;
     }
 

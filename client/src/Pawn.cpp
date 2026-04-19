@@ -11,30 +11,51 @@ constexpr float kSoftPositionCorrectionMeters = 0.35f;
 constexpr float kIdleCorrectionDelaySeconds = 0.12f;
 constexpr float kIdlePositionCorrectionRate = 7.0f;
 
-glm::quat OrientationFromDirection(const glm::vec3& direction, const glm::quat& fallback)
+glm::vec3 NormalizeOrFallback(const glm::vec3& direction, const glm::vec3& fallback)
 {
-    const glm::vec3 horizontal(direction.x, 0.0f, direction.z);
-    const float horizontal_length_squared = glm::dot(horizontal, horizontal);
-    if (horizontal_length_squared <= 0.000001f)
+    const float length_squared = glm::dot(direction, direction);
+    if (length_squared <= 0.000001f)
     {
         return fallback;
     }
 
-    const float yaw_radians = -std::atan2(horizontal.z, horizontal.x);
-    return glm::normalize(
-        glm::angleAxis(yaw_radians, glm::vec3(0.0f, 1.0f, 0.0f)));
+    return direction / std::sqrt(length_squared);
 }
 
-glm::vec3 NormalizeFacingDirection(const glm::vec3& direction, const glm::vec3& fallback)
+glm::vec3 NormalizeSurfaceUp(const glm::vec3& direction)
 {
-    const glm::vec3 horizontal(direction.x, 0.0f, direction.z);
-    const float horizontal_length_squared = glm::dot(horizontal, horizontal);
-    if (horizontal_length_squared <= 0.000001f)
+    return NormalizeOrFallback(direction, glm::vec3(0.0f, 1.0f, 0.0f));
+}
+
+glm::vec3 NormalizeFacingDirection(const glm::vec3& direction,
+                                  const glm::vec3& up,
+                                  const glm::vec3& fallback)
+{
+    const glm::vec3 surface_up = NormalizeSurfaceUp(up);
+    const glm::vec3 tangent = direction - (glm::dot(direction, surface_up) * surface_up);
+    const float tangent_length_squared = glm::dot(tangent, tangent);
+    if (tangent_length_squared <= 0.000001f)
     {
         return fallback;
     }
 
-    return horizontal / std::sqrt(horizontal_length_squared);
+    return tangent / std::sqrt(tangent_length_squared);
+}
+
+glm::quat OrientationFromForwardUp(const glm::vec3& direction,
+                                   const glm::vec3& up,
+                                   const glm::quat& fallback)
+{
+    const glm::vec3 surface_up = NormalizeSurfaceUp(up);
+    const glm::vec3 fallback_forward =
+        glm::rotate(fallback, glm::vec3(1.0f, 0.0f, 0.0f));
+    const glm::vec3 forward =
+        NormalizeFacingDirection(direction, surface_up, fallback_forward);
+    const glm::vec3 side =
+        NormalizeOrFallback(glm::cross(forward, surface_up), glm::vec3(0.0f, 0.0f, 1.0f));
+    const glm::vec3 corrected_up =
+        NormalizeOrFallback(glm::cross(side, forward), surface_up);
+    return glm::normalize(glm::quat_cast(glm::mat3(forward, corrected_up, side)));
 }
 } // namespace
 
@@ -45,8 +66,10 @@ void Pawn::Init()
     SetDisplayName({});
     authoritative_position_ = glm::vec3(0.0f);
     authoritative_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
+    authoritative_surface_up_ = glm::vec3(0.0f, 1.0f, 0.0f);
     predicted_position_ = glm::vec3(0.0f);
     predicted_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
+    predicted_surface_up_ = glm::vec3(0.0f, 1.0f, 0.0f);
     seconds_since_local_input_ = 1000.0f;
     controlled_ = false;
     initialized_ = false;
@@ -58,8 +81,10 @@ void Pawn::End()
     Actor::End();
     authoritative_position_ = glm::vec3(0.0f);
     authoritative_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
+    authoritative_surface_up_ = glm::vec3(0.0f, 1.0f, 0.0f);
     predicted_position_ = glm::vec3(0.0f);
     predicted_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
+    predicted_surface_up_ = glm::vec3(0.0f, 1.0f, 0.0f);
     seconds_since_local_input_ = 1000.0f;
     controlled_ = false;
     initialized_ = false;
@@ -76,14 +101,17 @@ void Pawn::ApplyReplication(const PawnSnapshot& snapshot)
     SetEntityId(snapshot.pawn_id);
     SetDisplayName(snapshot.display_name);
     authoritative_position_ = snapshot.position;
-    authoritative_facing_direction_ =
-        NormalizeFacingDirection(snapshot.facing_direction, authoritative_facing_direction_);
+    authoritative_surface_up_ = NormalizeSurfaceUp(snapshot.surface_up);
+    authoritative_facing_direction_ = NormalizeFacingDirection(snapshot.facing_direction,
+                                                               authoritative_surface_up_,
+                                                               authoritative_facing_direction_);
     controlled_ = snapshot.controlled;
 
     if (!initialized_)
     {
         predicted_position_ = authoritative_position_;
         predicted_facing_direction_ = authoritative_facing_direction_;
+        predicted_surface_up_ = authoritative_surface_up_;
         seconds_since_local_input_ = 1000.0f;
         initialized_ = true;
     }
@@ -92,7 +120,12 @@ void Pawn::ApplyReplication(const PawnSnapshot& snapshot)
     {
         predicted_position_ = authoritative_position_;
         predicted_facing_direction_ = authoritative_facing_direction_;
+        predicted_surface_up_ = authoritative_surface_up_;
         seconds_since_local_input_ = 1000.0f;
+    }
+    else
+    {
+        predicted_surface_up_ = authoritative_surface_up_;
     }
 
     SyncRootComponentFromRenderState();
@@ -109,6 +142,7 @@ void Pawn::Reconcile(float delta_seconds)
     {
         predicted_position_ = authoritative_position_;
         predicted_facing_direction_ = authoritative_facing_direction_;
+        predicted_surface_up_ = authoritative_surface_up_;
         seconds_since_local_input_ = 1000.0f;
         return;
     }
@@ -150,8 +184,23 @@ void Pawn::ApplyMove(const MoveCommand& move_command)
         return;
     }
 
-    predicted_position_ += move_command.world_displacement_m;
+    predicted_position_ += glm::vec3(static_cast<float>(move_command.world_displacement_m.x),
+                                     static_cast<float>(move_command.world_displacement_m.y),
+                                     static_cast<float>(move_command.world_displacement_m.z));
     SyncRootComponentFromRenderState();
+}
+
+void Pawn::NotifyLocalInput(const MoveCommand& move_command)
+{
+    if (!controlled_ || !initialized_)
+    {
+        return;
+    }
+
+    if (move_command.HasSignal())
+    {
+        seconds_since_local_input_ = 0.0f;
+    }
 }
 
 void Pawn::SetLocalFacingDirection(const glm::vec3& direction)
@@ -162,7 +211,50 @@ void Pawn::SetLocalFacingDirection(const glm::vec3& direction)
     }
 
     predicted_facing_direction_ =
-        NormalizeFacingDirection(direction, predicted_facing_direction_);
+        NormalizeFacingDirection(direction, GetSurfaceUp(), predicted_facing_direction_);
+    SyncRootComponentFromRenderState();
+}
+
+void Pawn::SetPredictedPosition(const glm::vec3& position)
+{
+    if (!controlled_ || !initialized_)
+    {
+        return;
+    }
+
+    predicted_position_ = position;
+    SyncRootComponentFromRenderState();
+}
+
+void Pawn::SetPredictedSurfaceUp(const glm::vec3& surface_up)
+{
+    if (!controlled_ || !initialized_)
+    {
+        return;
+    }
+
+    predicted_surface_up_ = NormalizeSurfaceUp(surface_up);
+    predicted_facing_direction_ =
+        NormalizeFacingDirection(predicted_facing_direction_,
+                                 predicted_surface_up_,
+                                 predicted_facing_direction_);
+    SyncRootComponentFromRenderState();
+}
+
+void Pawn::SetPredictedRenderState(const glm::vec3& position,
+                                   const glm::vec3& surface_up)
+{
+    if (!controlled_ || !initialized_)
+    {
+        return;
+    }
+
+    predicted_position_ = position;
+    predicted_surface_up_ = NormalizeSurfaceUp(surface_up);
+    predicted_facing_direction_ =
+        NormalizeFacingDirection(predicted_facing_direction_,
+                                 predicted_surface_up_,
+                                 predicted_facing_direction_);
     SyncRootComponentFromRenderState();
 }
 
@@ -203,7 +295,7 @@ bool Pawn::IsControlled() const
 
 glm::vec3 Pawn::GetSurfaceUp() const
 {
-    return glm::vec3(0.0f, 1.0f, 0.0f);
+    return controlled_ ? predicted_surface_up_ : authoritative_surface_up_;
 }
 
 const char* Pawn::GetActorClassName() const
@@ -215,7 +307,8 @@ void Pawn::SyncRootComponentFromRenderState()
 {
     GetRootComponent().SetWorldPosition(GetRenderPosition());
     GetRootComponent().SetWorldOrientation(
-        OrientationFromDirection(GetRenderFacingDirection(),
+        OrientationFromForwardUp(GetRenderFacingDirection(),
+                                 GetSurfaceUp(),
                                  glm::quat(1.0f, 0.0f, 0.0f, 0.0f)));
     GetRootComponent().SetWorldScale(glm::vec3(1.0f));
 }

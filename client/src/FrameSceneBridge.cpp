@@ -4,10 +4,12 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <vector>
 
+#include "WorkspacePaths.hpp"
 #include "frame/json/proto.h"
 #include "frame/json/serialize_uniform.h"
 #include "frame/level_interface.h"
@@ -21,8 +23,38 @@ namespace
 {
 constexpr glm::vec3 kGroundScaleMeters(250.0f, 0.10f, 250.0f);
 constexpr float kGroundTileHeight = -0.10f;
-constexpr float kPawnLiftMeters = 0.70f;
+constexpr float kPawnLiftMeters = 0.675f;
 constexpr glm::vec3 kPawnBodyScale(1.35f, 1.35f, 1.35f);
+
+glm::mat4 MakeTransform(glm::vec3 translation,
+                        glm::quat rotation,
+                        glm::vec3 scale);
+
+bool HasGroundPreviewAsset()
+{
+    const auto preview_path =
+        ResolveProjectRoot() / "asset" / "model" / "ground_preview.gltf";
+    return std::filesystem::exists(preview_path);
+}
+
+std::string ResolveGroundMeshFileName()
+{
+    return HasGroundPreviewAsset() ? "ground_preview.gltf" : "cube.glb";
+}
+
+glm::mat4 BuildGroundTransform()
+{
+    if (HasGroundPreviewAsset())
+    {
+        return MakeTransform(glm::vec3(0.0f),
+                             glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+                             glm::vec3(1.0f));
+    }
+
+    return MakeTransform(glm::vec3(0.0f, kGroundTileHeight, 0.0f),
+                         glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+                         kGroundScaleMeters);
+}
 
 frame::proto::Texture MakeRenderTexture(const std::string& name)
 {
@@ -228,6 +260,33 @@ frame::proto::Texture MakeCubemapTextureFromFile(
     return texture;
 }
 
+frame::proto::Texture MakeCubemapTextureFromFiles(
+    const std::string& name,
+    const std::string& positive_x,
+    const std::string& negative_x,
+    const std::string& positive_y,
+    const std::string& negative_y,
+    const std::string& positive_z,
+    const std::string& negative_z)
+{
+    frame::proto::Texture texture;
+    texture.set_name(name);
+    texture.set_cubemap(true);
+    texture.mutable_pixel_structure()->set_value(
+        frame::proto::PixelStructure::RGB_ALPHA);
+    texture.mutable_pixel_element_size()->set_value(
+        frame::proto::PixelElementSize::BYTE);
+
+    auto* file_names = texture.mutable_file_names();
+    file_names->set_positive_x(positive_x);
+    file_names->set_negative_x(negative_x);
+    file_names->set_positive_y(positive_y);
+    file_names->set_negative_y(negative_y);
+    file_names->set_positive_z(positive_z);
+    file_names->set_negative_z(negative_z);
+    return texture;
+}
+
 void AddDefaultRaytraceTextures(frame::proto::Level* level_proto)
 {
     const auto add_byte_texture =
@@ -378,6 +437,41 @@ glm::mat4 MakeHiddenTransform()
                          glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
                          glm::vec3(0.01f));
 }
+
+bool MatricesNearlyEqual(const glm::mat4& lhs, const glm::mat4& rhs)
+{
+    for (int column = 0; column < 4; ++column)
+    {
+        for (int row = 0; row < 4; ++row)
+        {
+            if (std::abs(lhs[column][row] - rhs[column][row]) > 0.0001f)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+glm::vec3 NormalizeOrFallback(const glm::vec3& direction, const glm::vec3& fallback)
+{
+    const float length_squared = glm::dot(direction, direction);
+    if (length_squared <= 0.000001f)
+    {
+        return fallback;
+    }
+
+    return direction / std::sqrt(length_squared);
+}
+
+glm::vec3 ProjectDirectionOntoSurface(const glm::vec3& direction,
+                                      const glm::vec3& surface_up,
+                                      const glm::vec3& fallback)
+{
+    const glm::vec3 up = NormalizeOrFallback(surface_up, glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::vec3 tangent = direction - (glm::dot(direction, up) * up);
+    return NormalizeOrFallback(tangent, fallback);
+}
 } // namespace
 
 void FrameSceneBridge::Init()
@@ -386,6 +480,11 @@ void FrameSceneBridge::Init()
     controlled_pawn_ = nullptr;
     camera_boon_ = nullptr;
     scene_handles_cached_ = false;
+    world_holders_initialized_ = false;
+    pawn_root_matrix_cached_ = false;
+    camera_boon_matrix_cached_ = false;
+    cached_pawn_root_matrix_ = glm::mat4(1.0f);
+    cached_camera_boon_matrix_ = glm::mat4(1.0f);
     ground_holder_matrix_id_ = frame::NullId;
     guide_holder_matrix_id_ = frame::NullId;
     landmark_holder_matrix_id_ = frame::NullId;
@@ -448,7 +547,7 @@ CameraPose FrameSceneBridge::BuildFollowCameraPose(const Pawn* controlled_pawn,
     {
         CameraPose pose;
         const glm::vec3 focus(0.0f, camera_boon.GetFocusHeightMeters(), 0.0f);
-        const glm::vec3 forward = BuildCameraForwardOnGround(camera_boon);
+        const glm::vec3 forward = BuildCameraForwardOnGround(nullptr, camera_boon);
         pose.position =
             focus - (forward * horizontal_distance) + glm::vec3(0.0f, vertical_distance, 0.0f);
         pose.target = focus;
@@ -459,7 +558,7 @@ CameraPose FrameSceneBridge::BuildFollowCameraPose(const Pawn* controlled_pawn,
     const glm::vec3 up = controlled_pawn->GetSurfaceUp();
     const glm::vec3 focus =
         controlled_pawn->GetRenderPosition() + (up * camera_boon.GetFocusHeightMeters());
-    const glm::vec3 forward = BuildCameraForwardOnGround(camera_boon);
+    const glm::vec3 forward = BuildCameraForwardOnGround(controlled_pawn, camera_boon);
 
     CameraPose pose;
     pose.position = focus - (forward * horizontal_distance) + (up * vertical_distance);
@@ -477,11 +576,21 @@ void FrameSceneBridge::CacheHandles(frame::LevelInterface& level)
     camera_boon_matrix_id_ = level.GetIdFromName("camera_boon_matrix");
 }
 
-glm::vec3 FrameSceneBridge::BuildCameraForwardOnGround(const CameraBoon& camera_boon) const
+glm::vec3 FrameSceneBridge::BuildCameraForwardOnGround(
+    const Pawn* controlled_pawn,
+    const CameraBoon& camera_boon) const
 {
-    return glm::vec3(std::cos(camera_boon.GetYawRadians()),
-                     0.0f,
-                     std::sin(camera_boon.GetYawRadians()));
+    const glm::vec3 base_forward(std::cos(camera_boon.GetYawRadians()),
+                                 0.0f,
+                                 std::sin(camera_boon.GetYawRadians()));
+    if (controlled_pawn == nullptr)
+    {
+        return NormalizeOrFallback(base_forward, glm::vec3(1.0f, 0.0f, 0.0f));
+    }
+
+    return ProjectDirectionOntoSurface(base_forward,
+                                       controlled_pawn->GetSurfaceUp(),
+                                       controlled_pawn->GetRenderFacingDirection());
 }
 
 glm::vec3 FrameSceneBridge::BuildCameraBoonLocalOffset(const CameraBoon& camera_boon) const
@@ -495,9 +604,30 @@ glm::vec3 FrameSceneBridge::BuildCameraBoonLocalOffset(const CameraBoon& camera_
                      0.0f);
 }
 
+void FrameSceneBridge::SetNodeMatrixIfChanged(frame::LevelInterface& level,
+                                              frame::EntityId node_id,
+                                              const glm::mat4& matrix,
+                                              glm::mat4* cached_matrix,
+                                              bool* cached) const
+{
+    if (*cached && MatricesNearlyEqual(*cached_matrix, matrix))
+    {
+        return;
+    }
+
+    SetNodeMatrix(level, node_id, matrix);
+    *cached_matrix = matrix;
+    *cached = true;
+}
+
 void FrameSceneBridge::UpdateWorldHolders(frame::LevelInterface& level,
                                           const Pawn* /*controlled_pawn*/) const
 {
+    if (world_holders_initialized_)
+    {
+        return;
+    }
+
     const glm::mat4 holder_transform =
         MakeTransform(glm::vec3(0.0f),
                       glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
@@ -505,6 +635,7 @@ void FrameSceneBridge::UpdateWorldHolders(frame::LevelInterface& level,
     SetNodeMatrix(level, ground_holder_matrix_id_, holder_transform);
     SetNodeMatrix(level, guide_holder_matrix_id_, holder_transform);
     SetNodeMatrix(level, landmark_holder_matrix_id_, holder_transform);
+    world_holders_initialized_ = true;
 }
 
 void FrameSceneBridge::UpdatePawnRoot(frame::LevelInterface& level,
@@ -513,22 +644,35 @@ void FrameSceneBridge::UpdatePawnRoot(frame::LevelInterface& level,
 {
     if (controlled_pawn == nullptr)
     {
-        SetNodeMatrix(level, pawn_root_matrix_id_, MakeHiddenTransform());
-        SetNodeMatrix(level, camera_boon_matrix_id_, MakeHiddenTransform());
+        const glm::mat4 hidden_transform = MakeHiddenTransform();
+        SetNodeMatrixIfChanged(level,
+                               pawn_root_matrix_id_,
+                               hidden_transform,
+                               &cached_pawn_root_matrix_,
+                               &pawn_root_matrix_cached_);
+        SetNodeMatrixIfChanged(level,
+                               camera_boon_matrix_id_,
+                               hidden_transform,
+                               &cached_camera_boon_matrix_,
+                               &camera_boon_matrix_cached_);
         return;
     }
 
     const glm::quat pawn_orientation = controlled_pawn->GetRenderOrientation();
-    SetNodeMatrix(level,
-                  pawn_root_matrix_id_,
-                  MakeTransform(controlled_pawn->GetRenderPosition(),
-                                pawn_orientation,
-                                glm::vec3(1.0f)));
-    SetNodeMatrix(level,
-                  camera_boon_matrix_id_,
-                  MakeTransform(BuildCameraBoonLocalOffset(camera_boon),
-                                glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                                glm::vec3(1.0f)));
+    SetNodeMatrixIfChanged(level,
+                           pawn_root_matrix_id_,
+                           MakeTransform(controlled_pawn->GetRenderPosition(),
+                                         pawn_orientation,
+                                         glm::vec3(1.0f)),
+                           &cached_pawn_root_matrix_,
+                           &pawn_root_matrix_cached_);
+    SetNodeMatrixIfChanged(level,
+                           camera_boon_matrix_id_,
+                           MakeTransform(BuildCameraBoonLocalOffset(camera_boon),
+                                         glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+                                         glm::vec3(1.0f)),
+                           &cached_camera_boon_matrix_,
+                           &camera_boon_matrix_cached_);
 
     if (debug_pose_trace_)
     {
@@ -558,14 +702,23 @@ void FrameSceneBridge::UpdatePawnRoot(frame::LevelInterface& level,
 frame::proto::Level FrameSceneBridge::BuildLevelProto() const
 {
     frame::proto::Level level;
+    const std::string ground_mesh_file_name = ResolveGroundMeshFileName();
+    const auto make_skybox_texture = [](const std::string& name)
+    {
+        return MakeCubemapTextureFromFiles(name,
+                                           "asset/cubemap/positive_x.png",
+                                           "asset/cubemap/negative_x.png",
+                                           "asset/cubemap/positive_y.png",
+                                           "asset/cubemap/negative_y.png",
+                                           "asset/cubemap/positive_z.png",
+                                           "asset/cubemap/negative_z.png");
+    };
+
     level.set_name("grpcMMOThirdPerson");
     level.set_default_texture_name("albedo");
     *level.add_textures() = MakeRenderTexture("albedo");
-    *level.add_textures() =
-        MakeCubemapTextureFromFile("skybox", "asset/cubemap/shiodome.hdr");
-    *level.add_textures() =
-        MakeCubemapTextureFromFile("skybox_env", "asset/cubemap/shiodome_env.hdr");
-    AddDefaultRaytraceTextures(&level);
+    *level.add_textures() = make_skybox_texture("skybox");
+    *level.add_textures() = make_skybox_texture("skybox_env");
 
     auto* scene_tree = level.mutable_scene_tree();
     scene_tree->set_default_root_name("root");
@@ -581,9 +734,7 @@ frame::proto::Level FrameSceneBridge::BuildLevelProto() const
     AddIdentityMatrixNode(scene_tree, "camera_boon_matrix", "pawn_root_matrix");
     AddStaticMatrixNode(scene_tree,
                         "ground_matrix",
-                        MakeTransform(glm::vec3(0.0f, kGroundTileHeight, 0.0f),
-                                      glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                                      kGroundScaleMeters),
+                        BuildGroundTransform(),
                         "ground_holder");
     AddStaticMatrixNode(scene_tree,
                         "pawn_body_matrix",
@@ -597,7 +748,7 @@ frame::proto::Level FrameSceneBridge::BuildLevelProto() const
     camera->set_parent("root");
     camera->set_fov_degrees(65.0f);
     camera->set_near_clip(0.05f);
-    camera->set_far_clip(2000.0f);
+    camera->set_far_clip(6000.0f);
     camera->mutable_position()->set_x(-18.0f);
     camera->mutable_position()->set_y(12.0f);
     camera->mutable_position()->set_z(-18.0f);
@@ -617,7 +768,7 @@ frame::proto::Level FrameSceneBridge::BuildLevelProto() const
     AddSceneFileMeshNode(scene_tree,
                          "GroundMesh",
                          "ground_matrix",
-                         "cube.glb",
+                         ground_mesh_file_name,
                          frame::proto::NodeMesh::SCENE_RENDER_TIME);
 
     AddSceneFileMeshNode(scene_tree,
