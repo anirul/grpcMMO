@@ -1,0 +1,16 @@
+Ground PBR override for terrain preview mesh
+
+Asset:
+Poly Haven - Red Laterite Soil Stones
+https://polyhaven.com/a/red_laterite_soil_stones
+
+License:
+CC0
+
+Downloaded files:
+- red_laterite_soil_stones_diff_1k.jpg
+- red_laterite_soil_stones_nor_gl_1k.jpg
+- red_laterite_soil_stones_arm_1k.jpg
+
+API reference:
+https://polyhaven.com/our-api

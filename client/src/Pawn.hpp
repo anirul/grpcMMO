@@ -17,6 +17,7 @@ struct PawnSnapshot
     std::string display_name;
     glm::vec3 position = glm::vec3(0.0f);
     glm::vec3 facing_direction = glm::vec3(1.0f, 0.0f, 0.0f);
+    glm::vec3 surface_up = glm::vec3(0.0f, 1.0f, 0.0f);
     bool controlled = false;
 };
 
@@ -29,7 +30,12 @@ public:
 
     void ApplyReplication(const PawnSnapshot& snapshot);
     void ApplyMove(const MoveCommand& move_command);
+    void NotifyLocalInput(const MoveCommand& move_command);
     void SetLocalFacingDirection(const glm::vec3& direction);
+    void SetPredictedPosition(const glm::vec3& position);
+    void SetPredictedSurfaceUp(const glm::vec3& surface_up);
+    void SetPredictedRenderState(const glm::vec3& position,
+                                 const glm::vec3& surface_up);
 
     [[nodiscard]] const std::string& GetEntityId() const;
     [[nodiscard]] glm::vec3 GetRenderFacingDirection() const;
@@ -46,8 +52,10 @@ private:
 
     glm::vec3 authoritative_position_ = glm::vec3(0.0f);
     glm::vec3 authoritative_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
+    glm::vec3 authoritative_surface_up_ = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::vec3 predicted_position_ = glm::vec3(0.0f);
     glm::vec3 predicted_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
+    glm::vec3 predicted_surface_up_ = glm::vec3(0.0f, 1.0f, 0.0f);
     float seconds_since_local_input_ = 1000.0f;
     bool controlled_ = false;
     bool initialized_ = false;

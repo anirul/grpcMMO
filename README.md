@@ -104,6 +104,30 @@ Override them with the CMake cache variables:
 - `GRPCMMO_FRAME_ROOT`
 - `GRPCMMO_DATA_ROOT`
 
+## Terrain Data Pipeline
+
+The repo now includes a first terrain ingestion slice for Mars DEM data:
+
+- download an official Mars source raster into `grpcMMO-data`
+- bake a local patch into `ground_heights.f32`, `ground_preview.gltf`, and `patch.json`
+- let the client render `ground_preview.gltf` automatically when present
+- use `python tools/fetch_mars_source.py ...` for a portable download/bootstrap step
+
+See [docs/TERRAIN_PIPELINE.md](docs/TERRAIN_PIPELINE.md).
+
+## Planet Runtime
+
+The spherical-world runtime foundation is now documented separately in
+[docs/PLANET_RUNTIME.md](docs/PLANET_RUNTIME.md).
+
+Current default radius in code:
+
+- Mars MOLA reference radius: `3,396,190 m`
+
+Reference scaled radius:
+
+- Mars at `1:200`: `16,980.95 m`
+
 Bootstrap the local toolchain once:
 
 ```powershell

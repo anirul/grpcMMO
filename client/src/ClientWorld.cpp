@@ -2,14 +2,30 @@
 
 #include <cmath>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
+
 #include "Character.hpp"
 #include "frame/json/proto.h"
 #include "frame/window_interface.h"
+#include "grpcmmo/shared/planet/PreviewPatchConfig.hpp"
 
 namespace grpcmmo::client
 {
 namespace
 {
+using grpcmmo::shared::planet::BuildPreviewPatchFrame;
+using grpcmmo::shared::planet::BuildPreviewPatchOriginPlanetPosition;
+using grpcmmo::shared::planet::BuildPreviewPatchUp;
+using grpcmmo::shared::planet::LocalDirectionToWorld;
+using grpcmmo::shared::planet::NormalizeOrFallback;
+using grpcmmo::shared::planet::ProjectVectorOntoTangent;
+using grpcmmo::shared::planet::ProjectDirectionOntoTangent;
+using grpcmmo::shared::planet::SurfaceUpFromPosition;
+using grpcmmo::shared::planet::WorldDirectionToLocal;
+using grpcmmo::shared::planet::WorldPositionToLocal;
+using grpcmmo::shared::planet::kMarsPreviewPatch000;
+
 bool NearlyEqualDirection(const glm::vec3& lhs, const glm::vec3& rhs)
 {
     const float lhs_length_squared = glm::dot(lhs, lhs);
@@ -24,34 +40,112 @@ bool NearlyEqualDirection(const glm::vec3& lhs, const glm::vec3& rhs)
     return alignment >= 0.99995f;
 }
 
-glm::vec3 ToRenderPosition(const grpcmmo::world::v1::EntityPatch& patch)
+constexpr double kHardWorldCorrectionMeters = 1.25;
+constexpr double kSoftWorldCorrectionMeters = 0.35;
+constexpr double kIdleWorldCorrectionRate = 7.0;
+
+[[nodiscard]] const grpcmmo::shared::planet::PreviewPatchConfig& PreviewPatch()
 {
-    return glm::vec3(static_cast<float>(patch.transform().position_m().x()),
-                     0.0f,
-                     static_cast<float>(patch.transform().position_m().z()));
+    return kMarsPreviewPatch000;
 }
 
-glm::quat ToRenderOrientation(const grpcmmo::world::v1::EntityPatch& patch)
+[[nodiscard]] const grpcmmo::shared::planet::TangentFrame& PreviewPatchFrame()
 {
-    const auto& orientation = patch.transform().orientation();
-    return glm::normalize(glm::quat(static_cast<float>(orientation.w()),
-                                    static_cast<float>(orientation.x()),
-                                    static_cast<float>(orientation.y()),
-                                    static_cast<float>(orientation.z())));
+    static const grpcmmo::shared::planet::TangentFrame frame =
+        BuildPreviewPatchFrame(PreviewPatch());
+    return frame;
 }
 
-glm::vec3 ToFacingDirection(const grpcmmo::world::v1::EntityPatch& patch)
+[[nodiscard]] const glm::dvec3& PreviewPatchOriginPlanetPosition()
 {
-    glm::vec3 facing_direction =
-        glm::rotate(ToRenderOrientation(patch), glm::vec3(1.0f, 0.0f, 0.0f));
-    facing_direction.y = 0.0f;
-    const float length_squared = glm::dot(facing_direction, facing_direction);
+    static const glm::dvec3 origin_position =
+        BuildPreviewPatchOriginPlanetPosition(PreviewPatch());
+    return origin_position;
+}
+
+[[nodiscard]] glm::dvec3 ToDVec3(const grpcmmo::world::v1::Vector3d& value)
+{
+    return glm::dvec3(value.x(), value.y(), value.z());
+}
+
+[[nodiscard]] glm::dquat ToDQuat(const grpcmmo::world::v1::Quaterniond& value)
+{
+    return glm::normalize(glm::dquat(value.w(), value.x(), value.y(), value.z()));
+}
+
+[[nodiscard]] glm::vec3 ToVec3(const glm::dvec3& value)
+{
+    return glm::vec3(static_cast<float>(value.x),
+                     static_cast<float>(value.y),
+                     static_cast<float>(value.z));
+}
+
+[[nodiscard]] glm::vec3 NormalizeOrFallbackFloat(const glm::vec3& value,
+                                                 const glm::vec3& fallback)
+{
+    const float length_squared = glm::dot(value, value);
     if (length_squared <= 0.000001f)
     {
-        return glm::vec3(1.0f, 0.0f, 0.0f);
+        return fallback;
     }
+    return value / std::sqrt(length_squared);
+}
 
-    return facing_direction / std::sqrt(length_squared);
+[[nodiscard]] glm::vec3 ToRenderPosition(const grpcmmo::world::v1::EntityPatch& patch)
+{
+    return ToVec3(WorldPositionToLocal(ToDVec3(patch.transform().position_m()),
+                                       PreviewPatchOriginPlanetPosition(),
+                                       PreviewPatchFrame()));
+}
+
+[[nodiscard]] glm::vec3 ToRenderPosition(const glm::dvec3& world_position)
+{
+    return ToVec3(WorldPositionToLocal(world_position,
+                                       PreviewPatchOriginPlanetPosition(),
+                                       PreviewPatchFrame()));
+}
+
+[[nodiscard]] glm::vec3 ToRenderSurfaceUp(const grpcmmo::world::v1::EntityPatch& patch)
+{
+    const glm::dvec3 world_up =
+        NormalizeOrFallback(
+            patch.transform().has_up_unit() ? ToDVec3(patch.transform().up_unit())
+                                            : SurfaceUpFromPosition(ToDVec3(patch.transform().position_m())),
+            BuildPreviewPatchUp(PreviewPatch()));
+    return NormalizeOrFallbackFloat(ToVec3(WorldDirectionToLocal(world_up, PreviewPatchFrame())),
+                                    glm::vec3(0.0f, 1.0f, 0.0f));
+}
+
+[[nodiscard]] glm::vec3 ToRenderSurfaceUp(const glm::dvec3& world_position)
+{
+    const glm::dvec3 world_up =
+        NormalizeOrFallback(SurfaceUpFromPosition(world_position),
+                            BuildPreviewPatchUp(PreviewPatch()));
+    return NormalizeOrFallbackFloat(ToVec3(WorldDirectionToLocal(world_up, PreviewPatchFrame())),
+                                    glm::vec3(0.0f, 1.0f, 0.0f));
+}
+
+[[nodiscard]] glm::vec3 ToFacingDirection(const grpcmmo::world::v1::EntityPatch& patch)
+{
+    const glm::dvec3 world_forward =
+        glm::rotate(ToDQuat(patch.transform().orientation()), glm::dvec3(1.0, 0.0, 0.0));
+    const glm::vec3 local_up = ToRenderSurfaceUp(patch);
+    return NormalizeOrFallbackFloat(
+        ToVec3(ProjectDirectionOntoTangent(WorldDirectionToLocal(world_forward, PreviewPatchFrame()),
+                                           glm::dvec3(local_up.x, local_up.y, local_up.z),
+                                           glm::dvec3(1.0, 0.0, 0.0))),
+        glm::vec3(1.0f, 0.0f, 0.0f));
+}
+
+[[nodiscard]] glm::quat ToRenderOrientation(const grpcmmo::world::v1::EntityPatch& patch)
+{
+    const glm::vec3 forward = ToFacingDirection(patch);
+    const glm::vec3 up = ToRenderSurfaceUp(patch);
+    const glm::vec3 side = NormalizeOrFallbackFloat(glm::cross(forward, up),
+                                                    glm::vec3(0.0f, 0.0f, 1.0f));
+    const glm::vec3 corrected_up =
+        NormalizeOrFallbackFloat(glm::cross(side, forward), up);
+    return glm::normalize(glm::quat_cast(glm::mat3(forward, corrected_up, side)));
 }
 } // namespace
 
@@ -85,11 +179,15 @@ void ClientWorld::Init()
     controlled_entity_id_.clear();
     pending_move_command_.Clear();
     last_sent_facing_direction_ = glm::vec3(1.0f, 0.0f, 0.0f);
+    controlled_authoritative_world_position_ = glm::dvec3(0.0, 0.0, 0.0);
+    controlled_predicted_world_position_ = glm::dvec3(0.0, 0.0, 0.0);
+    controlled_world_position_valid_ = false;
     last_sent_facing_direction_valid_ = false;
 
     ClearReplicatedActors();
     ClearLocalWorldActors();
     BootstrapLocalWorld();
+    (void)terrain_sampler_.LoadPreviewPatch();
 
     if (player_controller_ != nullptr)
     {
@@ -131,6 +229,9 @@ void ClientWorld::End()
     ClearReplicatedActors();
     ClearLocalWorldActors();
     window_ = nullptr;
+    controlled_authoritative_world_position_ = glm::dvec3(0.0, 0.0, 0.0);
+    controlled_predicted_world_position_ = glm::dvec3(0.0, 0.0, 0.0);
+    controlled_world_position_valid_ = false;
 }
 
 void ClientWorld::OnSessionReady(
@@ -158,6 +259,8 @@ void ClientWorld::ApplyReplicationBatch(
 
 void ClientWorld::Tick(float delta_seconds)
 {
+    MoveCommand local_move_command;
+
     if (player_controller_ != nullptr)
     {
         player_controller_->Tick(delta_seconds);
@@ -183,12 +286,14 @@ void ClientWorld::Tick(float delta_seconds)
             !NearlyEqualDirection(look_facing_direction, last_sent_facing_direction_))
         {
             MoveCommand facing_command;
-            facing_command.SetFacingDirection(look_facing_direction);
+            facing_command.SetFacingDirection(glm::dvec3(look_facing_direction));
             pending_move_command_.Accumulate(facing_command);
         }
 
-        pending_move_command_.Accumulate(
-            player_controller_->DrivePawn(frame_input, delta_seconds));
+        local_move_command = player_controller_->DrivePawn(frame_input, delta_seconds);
+        controlled_pawn->NotifyLocalInput(local_move_command);
+        AdvanceControlledPrediction(local_move_command);
+        pending_move_command_.Accumulate(local_move_command);
     }
 
     for (auto& planet : planets_)
@@ -207,6 +312,30 @@ void ClientWorld::Tick(float delta_seconds)
     {
         actor->Tick(delta_seconds);
     }
+
+    if (controlled_world_position_valid_)
+    {
+        const double world_error_m = glm::length(controlled_authoritative_world_position_ -
+                                                 controlled_predicted_world_position_);
+        if (world_error_m > kHardWorldCorrectionMeters)
+        {
+            controlled_predicted_world_position_ = controlled_authoritative_world_position_;
+        }
+        else if (world_error_m > kSoftWorldCorrectionMeters &&
+                 !local_move_command.HasTranslation())
+        {
+            const double alpha =
+                std::clamp(static_cast<double>(delta_seconds) * kIdleWorldCorrectionRate,
+                           0.0,
+                           1.0);
+            controlled_predicted_world_position_ =
+                glm::mix(controlled_predicted_world_position_,
+                         controlled_authoritative_world_position_,
+                         alpha);
+        }
+    }
+
+    SyncControlledPawnRenderState();
 
     const CameraBoon* active_boon =
         player_controller_ != nullptr ? &player_controller_->GetCameraBoon() : nullptr;
@@ -281,6 +410,42 @@ PlayerController::FrameInput ClientWorld::BuildFrameInput() const
     return frame_input;
 }
 
+glm::vec3 ClientWorld::GroundRenderPosition(const glm::vec3& render_position) const
+{
+    return terrain_sampler_.GroundLocalPosition(render_position);
+}
+
+void ClientWorld::AdvanceControlledPrediction(const MoveCommand& move_command)
+{
+    if (!controlled_world_position_valid_ || !move_command.HasTranslation())
+    {
+        return;
+    }
+
+    const glm::dvec3 local_step = move_command.world_displacement_m;
+    const glm::dvec3 current_up =
+        SurfaceUpFromPosition(controlled_predicted_world_position_);
+    const glm::dvec3 requested_world_step =
+        ProjectVectorOntoTangent(LocalDirectionToWorld(local_step, PreviewPatchFrame()),
+                                 current_up);
+    controlled_predicted_world_position_ =
+        terrain_sampler_.GroundWorldPosition(controlled_predicted_world_position_ +
+                                             requested_world_step);
+}
+
+void ClientWorld::SyncControlledPawnRenderState()
+{
+    Pawn* controlled_pawn = GetControlledPawn();
+    if (controlled_pawn == nullptr || !controlled_world_position_valid_)
+    {
+        return;
+    }
+
+    controlled_pawn->SetPredictedRenderState(
+        ToRenderPosition(controlled_predicted_world_position_),
+        ToRenderSurfaceUp(controlled_predicted_world_position_));
+}
+
 void ClientWorld::BootstrapLocalWorld()
 {
     auto planet = actor_factory_.CreatePlanetActor("planet-root", "Planet");
@@ -322,6 +487,9 @@ void ClientWorld::ClearReplicatedActors()
     }
     replicated_actors_.clear();
     controlled_entity_id_.clear();
+    controlled_authoritative_world_position_ = glm::dvec3(0.0, 0.0, 0.0);
+    controlled_predicted_world_position_ = glm::dvec3(0.0, 0.0, 0.0);
+    controlled_world_position_valid_ = false;
 }
 
 void ClientWorld::ApplyEntityPatch(const grpcmmo::world::v1::EntityPatch& patch)
@@ -346,13 +514,28 @@ void ClientWorld::ApplyEntityPatch(const grpcmmo::world::v1::EntityPatch& patch)
 
     if (Pawn* pawn = dynamic_cast<Pawn*>(actor); pawn != nullptr)
     {
+        const glm::dvec3 grounded_world_position =
+            terrain_sampler_.GroundWorldPosition(ToDVec3(patch.transform().position_m()));
         PawnSnapshot snapshot;
         snapshot.pawn_id = patch.entity_id();
         snapshot.display_name = patch.metadata().display_name();
-        snapshot.position = ToRenderPosition(patch);
+        snapshot.position = ToRenderPosition(grounded_world_position);
         snapshot.facing_direction = ToFacingDirection(patch);
+        snapshot.surface_up = ToRenderSurfaceUp(grounded_world_position);
         snapshot.controlled = patch.metadata().controlled_entity();
         pawn->ApplyReplication(snapshot);
+
+        if (patch.metadata().controlled_entity())
+        {
+            controlled_authoritative_world_position_ = grounded_world_position;
+            if (!controlled_world_position_valid_ ||
+                controlled_entity_id_ != patch.entity_id())
+            {
+                controlled_predicted_world_position_ = grounded_world_position;
+                controlled_world_position_valid_ = true;
+            }
+            SyncControlledPawnRenderState();
+        }
     }
     else
     {

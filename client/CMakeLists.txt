@@ -48,6 +48,7 @@ set(GRPCMMO_CLIENT_SOURCES
   src/GrpcSessionClient.cpp
   src/Pawn.cpp
   src/PlayerController.cpp
+  src/WorkspacePaths.cpp
 )
 
 set(GRPCMMO_CLIENT_HEADERS
@@ -68,6 +69,7 @@ set(GRPCMMO_CLIENT_HEADERS
   src/Object.hpp
   src/Pawn.hpp
   src/PlayerController.hpp
+  src/WorkspacePaths.hpp
   src/WorldActor.hpp
 )
 

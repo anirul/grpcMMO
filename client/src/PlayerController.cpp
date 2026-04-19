@@ -8,6 +8,29 @@
 
 namespace grpcmmo::client
 {
+namespace
+{
+glm::vec3 NormalizeOrFallback(const glm::vec3& direction, const glm::vec3& fallback)
+{
+    const float length_squared = glm::dot(direction, direction);
+    if (length_squared <= 0.000001f)
+    {
+        return fallback;
+    }
+
+    return direction / std::sqrt(length_squared);
+}
+
+glm::vec3 ProjectDirectionOntoSurface(const glm::vec3& direction,
+                                      const glm::vec3& surface_up,
+                                      const glm::vec3& fallback)
+{
+    const glm::vec3 up = NormalizeOrFallback(surface_up, glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::vec3 tangent = direction - (glm::dot(direction, up) * up);
+    return NormalizeOrFallback(tangent, fallback);
+}
+} // namespace
+
 bool PlayerController::FrameInput::HasGameplayInput() const
 {
     return std::abs(move_forward) > 0.001f ||
@@ -74,7 +97,7 @@ MoveCommand PlayerController::DrivePawn(const FrameInput& frame_input,
                                         float delta_seconds)
 {
     MoveCommand move_command;
-    Pawn* pawn = GetPawn();
+    const Pawn* pawn = GetPawn();
     if (pawn == nullptr)
     {
         return move_command;
@@ -91,23 +114,38 @@ MoveCommand PlayerController::DrivePawn(const FrameInput& frame_input,
     }
 
     const float movement_yaw_radians = camera_boon_.GetYawRadians();
-    const glm::vec3 forward(std::cos(movement_yaw_radians),
-                            0.0f,
-                            std::sin(movement_yaw_radians));
-    const glm::vec3 right(-forward.z, 0.0f, forward.x);
+    const glm::vec3 base_forward(std::cos(movement_yaw_radians),
+                                 0.0f,
+                                 std::sin(movement_yaw_radians));
+    const glm::vec3 surface_up = pawn->GetSurfaceUp();
+    const glm::vec3 forward =
+        ProjectDirectionOntoSurface(base_forward,
+                                    surface_up,
+                                    pawn->GetRenderFacingDirection());
+    const glm::vec3 right =
+        NormalizeOrFallback(glm::cross(forward, surface_up),
+                            glm::vec3(-forward.z, 0.0f, forward.x));
     move_command.world_displacement_m =
-        ((forward * frame_input.move_forward) + (right * frame_input.move_right)) *
-        kMoveSpeedMetersPerSecond * movement_step_seconds;
-
-    pawn->ApplyMove(move_command);
+        glm::dvec3((forward * frame_input.move_forward) +
+                   (right * frame_input.move_right)) *
+        static_cast<double>(kMoveSpeedMetersPerSecond * movement_step_seconds);
     return move_command;
 }
 
 glm::vec3 PlayerController::GetLookFacingDirection() const
 {
-    return glm::vec3(std::cos(camera_boon_.GetYawRadians()),
-                     0.0f,
-                     std::sin(camera_boon_.GetYawRadians()));
+    const Pawn* pawn = GetPawn();
+    const glm::vec3 base_forward(std::cos(camera_boon_.GetYawRadians()),
+                                 0.0f,
+                                 std::sin(camera_boon_.GetYawRadians()));
+    if (pawn == nullptr)
+    {
+        return NormalizeOrFallback(base_forward, glm::vec3(1.0f, 0.0f, 0.0f));
+    }
+
+    return ProjectDirectionOntoSurface(base_forward,
+                                       pawn->GetSurfaceUp(),
+                                       pawn->GetRenderFacingDirection());
 }
 
 const CameraBoon& PlayerController::GetCameraBoon() const

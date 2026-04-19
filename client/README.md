@@ -10,6 +10,10 @@ The current `grpcmmo_client` target:
 - interpolates replicated state locally
 - renders a simple placeholder ground scene and follows the controlled entity with a third-person camera
 
+If `../grpcMMO-data/tiles/mars/patch-000/ground_preview.gltf` exists, the client
+will copy that baked preview mesh into its local model assets and use it
+instead of the placeholder ground cube.
+
 For workspace development, `grpcMMO` expects the following repositories by default:
 
 - `external/frame`

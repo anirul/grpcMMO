@@ -48,9 +48,15 @@ private:
 
     void CacheHandles(frame::LevelInterface& level);
     [[nodiscard]] glm::vec3 BuildCameraForwardOnGround(
+        const Pawn* controlled_pawn,
         const CameraBoon& camera_boon) const;
     [[nodiscard]] glm::vec3 BuildCameraBoonLocalOffset(
         const CameraBoon& camera_boon) const;
+    void SetNodeMatrixIfChanged(frame::LevelInterface& level,
+                                frame::EntityId node_id,
+                                const glm::mat4& matrix,
+                                glm::mat4* cached_matrix,
+                                bool* cached) const;
     void UpdatePawnRoot(frame::LevelInterface& level,
                         const Pawn* controlled_pawn,
                         const CameraBoon& camera_boon) const;
@@ -62,7 +68,12 @@ private:
     const CameraBoon* camera_boon_ = nullptr;
     bool debug_pose_trace_ = false;
     bool scene_handles_cached_ = false;
+    mutable bool world_holders_initialized_ = false;
+    mutable bool pawn_root_matrix_cached_ = false;
+    mutable bool camera_boon_matrix_cached_ = false;
     mutable std::chrono::steady_clock::time_point last_pose_trace_at_{};
+    mutable glm::mat4 cached_pawn_root_matrix_{1.0f};
+    mutable glm::mat4 cached_camera_boon_matrix_{1.0f};
     frame::EntityId ground_holder_matrix_id_ = frame::NullId;
     frame::EntityId guide_holder_matrix_id_ = frame::NullId;
     frame::EntityId landmark_holder_matrix_id_ = frame::NullId;

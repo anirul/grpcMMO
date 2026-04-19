@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -49,6 +50,8 @@ private:
                            const grpcmmo::auth::v1::CreateSessionGrantResponse& grant_response,
                            std::string* error_message);
     void StartReader();
+    void StartWriter();
+    bool EnqueueMessage(grpcmmo::session::v1::ClientMessage&& message);
 
     std::unique_ptr<grpcmmo::session::v1::SessionService::Stub> session_stub_;
     std::unique_ptr<grpc::ClientContext> session_context_;
@@ -56,10 +59,15 @@ private:
                                              grpcmmo::session::v1::ServerMessage>>
         session_stream_;
     std::thread reader_thread_;
+    std::thread writer_thread_;
     std::mutex write_mutex_;
     std::mutex queue_mutex_;
+    std::mutex outgoing_queue_mutex_;
+    std::condition_variable outgoing_queue_cv_;
     std::deque<grpcmmo::session::v1::ServerMessage> pending_messages_;
+    std::deque<grpcmmo::session::v1::ClientMessage> pending_outgoing_messages_;
     std::atomic<bool> open_{false};
+    std::atomic<bool> writer_stop_requested_{false};
     std::atomic<std::uint64_t> next_input_sequence_{1};
 };
 } // namespace grpcmmo::client

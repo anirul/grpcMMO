@@ -14,6 +14,9 @@ asset/generated/
 !asset/model/
 asset/model/*
 !asset/model/player_cube.gltf
+!asset/model/ground_preview.gltf
+!asset/model/ground_pbr/
+!asset/model/ground_pbr/*
 *.db
 *.sqlite
 *.sqlite3

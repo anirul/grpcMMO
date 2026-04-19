@@ -75,6 +75,7 @@ int Client::Run(int argc, char** argv)
                                                        return running_;
                                                    }));
     client_world_.End();
+    session_.Shutdown();
     return exit_code;
 }
 

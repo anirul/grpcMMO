@@ -21,6 +21,7 @@
     },
     "shaderc",
     "spdlog",
+    "tiff",
     "sqlite3",
     "vulkan"
   ]
