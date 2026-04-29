@@ -1,11 +1,9 @@
 #include "Client.hpp"
 
 #include <algorithm>
-#include <array>
 #include <chrono>
 #include <iostream>
 #include <string>
-#include <vector>
 
 #include "absl/flags/flag.h"
 #include "frame/common/application.h"
@@ -27,63 +25,11 @@ namespace grpcmmo::client
 namespace
 {
 constexpr glm::uvec2 kDefaultWindowSize{1280u, 720u};
-
-bool StartsWith(const std::string& value, const std::string& prefix)
-{
-    return value.size() >= prefix.size() &&
-           value.compare(0, prefix.size(), prefix) == 0;
-}
-
-std::string NormalizeClientArg(const std::string& arg)
-{
-    constexpr std::array<const char*, 3> kRenderApiPrefixes = {
-        "--render_api=",
-        "-render_api=",
-        "/render_api="};
-
-    for (const char* prefix : kRenderApiPrefixes)
-    {
-        if (StartsWith(arg, prefix))
-        {
-            return "--device=" + arg.substr(std::string(prefix).size());
-        }
-    }
-
-    if (arg == "--render_api" || arg == "-render_api" ||
-        arg == "/render_api")
-    {
-        return "--device";
-    }
-
-    return arg;
-}
-
-std::vector<std::string> NormalizeClientArgs(int argc, char** argv)
-{
-    std::vector<std::string> normalized_args;
-    normalized_args.reserve(static_cast<std::size_t>(std::max(argc, 0)));
-    for (int i = 0; i < argc; ++i)
-    {
-        normalized_args.push_back(NormalizeClientArg(argv[i] ? argv[i] : ""));
-    }
-    return normalized_args;
-}
 }
 
 int Client::Run(int argc, char** argv)
 {
-    auto normalized_args = NormalizeClientArgs(argc, argv);
-    std::vector<char*> normalized_argv;
-    normalized_argv.reserve(normalized_args.size());
-    for (auto& arg : normalized_args)
-    {
-        normalized_argv.push_back(arg.data());
-    }
-
-    frame::common::Application app(
-        static_cast<int>(normalized_argv.size()),
-        normalized_argv.data(),
-        kDefaultWindowSize);
+    frame::common::Application app(argc, argv, kDefaultWindowSize);
     LoadFlags();
 
     std::string error_message;
