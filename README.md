@@ -204,7 +204,7 @@ Start the servers in two terminals:
 Connect with the visual ground-slice client:
 
 ```powershell
-.\build\windows\client\Debug\grpcmmo_client.exe --login_name=alice --password=alice123 --character_name=alice-probe --render_api=opengl
+.\build\windows\client\Debug\grpcmmo_client.exe --login_name=alice --password=alice123 --character_name=alice-probe --device=opengl
 ```
 
 Controls:
@@ -218,7 +218,7 @@ Controls:
 For an automated smoke test without keyboard input:
 
 ```powershell
-.\build\windows\client\Debug\grpcmmo_client.exe --login_name=demo --password=demo --character_name=explorer --render_api=opengl --auto_move_seconds=5 --auto_exit_seconds=12
+.\build\windows\client\Debug\grpcmmo_client.exe --login_name=demo --password=demo --character_name=explorer --device=opengl --auto_move_seconds=5 --auto_exit_seconds=12
 ```
 
 Current client state:
