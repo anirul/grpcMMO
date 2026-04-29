@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <string>
 
 #include "absl/flags/flag.h"
 #include "frame/common/application.h"
@@ -50,33 +51,33 @@ int Client::Run(int argc, char** argv)
     last_frame_time_ = std::chrono::steady_clock::now();
     last_move_sent_at_ = last_frame_time_;
 
-    const int exit_code = static_cast<int>(app.Run([this]()
-                                                   {
-                                                       const auto now = std::chrono::steady_clock::now();
-                                                       const float delta_seconds =
-                                                           std::chrono::duration<float>(now - last_frame_time_).count();
-                                                       last_frame_time_ = now;
+    const auto window_result = app.Run([this]()
+                                       {
+                                           const auto now = std::chrono::steady_clock::now();
+                                           const float delta_seconds =
+                                               std::chrono::duration<float>(now - last_frame_time_).count();
+                                           last_frame_time_ = now;
 
-                                                       PumpNetworkMessages();
-                                                       if (!running_)
-                                                       {
-                                                           return false;
-                                                       }
+                                           PumpNetworkMessages();
+                                           if (!running_)
+                                           {
+                                               return false;
+                                           }
 
-                                                       if (!Tick(delta_seconds))
-                                                       {
-                                                           return false;
-                                                       }
-                                                       if (!SendMoveIfDue())
-                                                       {
-                                                           running_ = false;
-                                                           return false;
-                                                       }
-                                                       return running_;
-                                                   }));
+                                           if (!Tick(delta_seconds))
+                                           {
+                                               return false;
+                                           }
+                                           if (!SendMoveIfDue())
+                                           {
+                                               running_ = false;
+                                               return false;
+                                           }
+                                           return running_;
+                                       });
     client_world_.End();
     session_.Shutdown();
-    return exit_code;
+    return window_result == frame::WindowReturnEnum::UKNOWN ? 1 : 0;
 }
 
 void Client::LoadFlags()
