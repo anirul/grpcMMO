@@ -307,16 +307,14 @@ std::filesystem::path AssetBootstrap::EnsureFrameAssetsAvailable() const
         }
         else
         {
-            RemoveFileIfPresent(preview_gltf_destination);
-            RemoveFileIfPresent(preview_texture_destination);
-            RemoveFileIfPresent(preview_obj_destination);
+            ApplyGroundPbrOverrideIfPresent(preview_gltf_destination,
+                                            destination_asset_root);
         }
     }
     else
     {
-        RemoveFileIfPresent(preview_gltf_destination);
-        RemoveFileIfPresent(preview_texture_destination);
-        RemoveFileIfPresent(preview_obj_destination);
+        ApplyGroundPbrOverrideIfPresent(preview_gltf_destination,
+                                        destination_asset_root);
     }
 
     return destination_asset_root / "shader";
