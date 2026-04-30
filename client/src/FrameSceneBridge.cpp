@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -23,12 +24,11 @@ namespace
 {
 constexpr glm::vec3 kGroundScaleMeters(250.0f, 0.10f, 250.0f);
 constexpr float kGroundTileHeight = -0.10f;
-constexpr float kPawnLiftMeters = 0.675f;
-constexpr glm::vec3 kPawnBodyScale(1.35f, 1.35f, 1.35f);
+constexpr float kPawnLiftMeters = 0.0f;
+constexpr glm::vec3 kPawnBodyScale(1.0f, 1.0f, 1.0f);
 
-glm::mat4 MakeTransform(glm::vec3 translation,
-                        glm::quat rotation,
-                        glm::vec3 scale);
+glm::mat4 MakeTransform(
+    glm::vec3 translation, glm::quat rotation, glm::vec3 scale);
 
 bool HasGroundPreviewAsset()
 {
@@ -46,14 +46,16 @@ glm::mat4 BuildGroundTransform()
 {
     if (HasGroundPreviewAsset())
     {
-        return MakeTransform(glm::vec3(0.0f),
-                             glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                             glm::vec3(1.0f));
+        return MakeTransform(
+            glm::vec3(0.0f),
+            glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+            glm::vec3(1.0f));
     }
 
-    return MakeTransform(glm::vec3(0.0f, kGroundTileHeight, 0.0f),
-                         glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                         kGroundScaleMeters);
+    return MakeTransform(
+        glm::vec3(0.0f, kGroundTileHeight, 0.0f),
+        glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+        kGroundScaleMeters);
 }
 
 frame::proto::Texture MakeRenderTexture(const std::string& name)
@@ -61,8 +63,10 @@ frame::proto::Texture MakeRenderTexture(const std::string& name)
     frame::proto::Texture texture;
     texture.set_name(name);
     texture.set_cubemap(false);
-    texture.mutable_pixel_element_size()->set_value(frame::proto::PixelElementSize::BYTE);
-    texture.mutable_pixel_structure()->set_value(frame::proto::PixelStructure::RGB);
+    texture.mutable_pixel_element_size()->set_value(
+        frame::proto::PixelElementSize::BYTE);
+    texture.mutable_pixel_structure()->set_value(
+        frame::proto::PixelStructure::RGB);
     texture.mutable_size()->set_x(-1);
     texture.mutable_size()->set_y(-1);
     return texture;
@@ -78,13 +82,15 @@ frame::proto::Texture MakeSolidTexture(
     texture.set_cubemap(false);
     texture.mutable_size()->set_x(1);
     texture.mutable_size()->set_y(1);
-    texture.mutable_pixel_structure()->set_value(frame::proto::PixelStructure::RGB_ALPHA);
+    texture.mutable_pixel_structure()->set_value(
+        frame::proto::PixelStructure::RGB_ALPHA);
     texture.mutable_pixel_element_size()->set_value(element_size);
 
     if (element_size == frame::proto::PixelElementSize::FLOAT)
     {
-        texture.set_pixels(reinterpret_cast<const char*>(color.data()),
-                           static_cast<int>(color.size() * sizeof(float)));
+        texture.set_pixels(
+            reinterpret_cast<const char*>(color.data()),
+            static_cast<int>(color.size() * sizeof(float)));
         return texture;
     }
 
@@ -93,8 +99,9 @@ frame::proto::Texture MakeSolidTexture(
         static_cast<std::uint8_t>(std::clamp(color[1], 0.0f, 1.0f) * 255.0f),
         static_cast<std::uint8_t>(std::clamp(color[2], 0.0f, 1.0f) * 255.0f),
         static_cast<std::uint8_t>(std::clamp(color[3], 0.0f, 1.0f) * 255.0f)};
-    texture.set_pixels(reinterpret_cast<const char*>(pixels.data()),
-                       static_cast<int>(pixels.size()));
+    texture.set_pixels(
+        reinterpret_cast<const char*>(pixels.data()),
+        static_cast<int>(pixels.size()));
     return texture;
 }
 
@@ -109,10 +116,13 @@ frame::proto::Texture MakeByteTexture(
     texture.set_cubemap(false);
     texture.mutable_size()->set_x(width);
     texture.mutable_size()->set_y(height);
-    texture.mutable_pixel_structure()->set_value(frame::proto::PixelStructure::RGB_ALPHA);
-    texture.mutable_pixel_element_size()->set_value(frame::proto::PixelElementSize::BYTE);
-    texture.set_pixels(reinterpret_cast<const char*>(pixels.data()),
-                       static_cast<int>(pixels.size()));
+    texture.mutable_pixel_structure()->set_value(
+        frame::proto::PixelStructure::RGB_ALPHA);
+    texture.mutable_pixel_element_size()->set_value(
+        frame::proto::PixelElementSize::BYTE);
+    texture.set_pixels(
+        reinterpret_cast<const char*>(pixels.data()),
+        static_cast<int>(pixels.size()));
     return texture;
 }
 
@@ -126,15 +136,16 @@ frame::proto::Texture MakeDebugCheckerTexture(const std::string& name)
     constexpr int kArrowCellSize = 64;
 
     std::vector<std::uint8_t> pixels(
-        static_cast<std::size_t>(kWidth * kHeight * 4),
-        255);
+        static_cast<std::size_t>(kWidth * kHeight * 4), 255);
 
     for (int y = 0; y < kHeight; ++y)
     {
         for (int x = 0; x < kWidth; ++x)
         {
-            const float u = static_cast<float>(x) / static_cast<float>(kWidth - 1);
-            const float v = static_cast<float>(y) / static_cast<float>(kHeight - 1);
+            const float u =
+                static_cast<float>(x) / static_cast<float>(kWidth - 1);
+            const float v =
+                static_cast<float>(y) / static_cast<float>(kHeight - 1);
 
             const bool micro_checker =
                 (((x / kMicroCellSize) + (y / kMicroCellSize)) % 2) == 0;
@@ -152,13 +163,11 @@ frame::proto::Texture MakeDebugCheckerTexture(const std::string& name)
             const int arrow_u = x % kArrowCellSize;
             const int arrow_v = y % kArrowCellSize;
             const int arrow_center = kArrowCellSize / 2;
-            const bool arrow_shaft =
-                arrow_u >= 10 && arrow_u <= 36 &&
-                std::abs(arrow_v - arrow_center) <= 1;
+            const bool arrow_shaft = arrow_u >= 10 && arrow_u <= 36 &&
+                                     std::abs(arrow_v - arrow_center) <= 1;
             const bool arrow_head =
                 arrow_u >= 34 && arrow_u <= 52 &&
-                std::abs(arrow_v - arrow_center) <=
-                    ((arrow_u - 34) / 2 + 1);
+                std::abs(arrow_v - arrow_center) <= ((arrow_u - 34) / 2 + 1);
             const bool arrow_marker = arrow_shaft || arrow_head;
 
             const bool u_tick =
@@ -248,14 +257,15 @@ frame::proto::Texture MakeDebugCheckerTexture(const std::string& name)
 }
 
 frame::proto::Texture MakeCubemapTextureFromFile(
-    const std::string& name,
-    const std::string& file_name)
+    const std::string& name, const std::string& file_name)
 {
     frame::proto::Texture texture;
     texture.set_name(name);
     texture.set_cubemap(true);
-    texture.mutable_pixel_structure()->set_value(frame::proto::PixelStructure::RGB);
-    texture.mutable_pixel_element_size()->set_value(frame::proto::PixelElementSize::FLOAT);
+    texture.mutable_pixel_structure()->set_value(
+        frame::proto::PixelStructure::RGB);
+    texture.mutable_pixel_element_size()->set_value(
+        frame::proto::PixelElementSize::FLOAT);
     texture.set_file_name(file_name);
     return texture;
 }
@@ -289,24 +299,23 @@ frame::proto::Texture MakeCubemapTextureFromFiles(
 
 void AddDefaultRaytraceTextures(frame::proto::Level* level_proto)
 {
-    const auto add_byte_texture =
-        [&](const std::string& name, const std::array<float, 4>& color)
-    {
+    const auto add_byte_texture = [&](const std::string& name,
+                                      const std::array<float, 4>& color) {
         *level_proto->add_textures() =
             MakeSolidTexture(name, color, frame::proto::PixelElementSize::BYTE);
     };
-    const auto add_float_texture =
-        [&](const std::string& name, const std::array<float, 4>& color)
-    {
-        *level_proto->add_textures() =
-            MakeSolidTexture(name, color, frame::proto::PixelElementSize::FLOAT);
+    const auto add_float_texture = [&](const std::string& name,
+                                       const std::array<float, 4>& color) {
+        *level_proto->add_textures() = MakeSolidTexture(
+            name, color, frame::proto::PixelElementSize::FLOAT);
     };
 
     const std::array<float, 4> white = {1.0f, 1.0f, 1.0f, 1.0f};
     const std::array<float, 4> normal = {0.5f, 0.5f, 1.0f, 1.0f};
     const std::array<float, 4> black = {0.0f, 0.0f, 0.0f, 1.0f};
     const std::array<float, 4> ior = {1.5f, 1.5f, 1.5f, 1.0f};
-    const std::array<float, 4> far_attenuation = {1000000.0f, 1000000.0f, 1000000.0f, 1.0f};
+    const std::array<float, 4> far_attenuation = {
+        1000000.0f, 1000000.0f, 1000000.0f, 1.0f};
 
     add_byte_texture("albedo_texture", white);
     add_byte_texture("Color", white);
@@ -322,7 +331,8 @@ void AddDefaultRaytraceTextures(frame::proto::Level* level_proto)
     add_byte_texture("attenuation_color_texture", white);
     add_float_texture("attenuation_distance_texture", far_attenuation);
 
-    *level_proto->add_textures() = MakeDebugCheckerTexture("opaque_albedo_texture");
+    *level_proto->add_textures() =
+        MakeDebugCheckerTexture("opaque_albedo_texture");
     add_byte_texture("opaque_normal_texture", normal);
     add_byte_texture("opaque_roughness_texture", white);
     add_byte_texture("opaque_metallic_texture", black);
@@ -339,7 +349,8 @@ void AddDefaultRaytraceTextures(frame::proto::Level* level_proto)
     add_float_texture("transmissive_ior_texture", ior);
     add_float_texture("transmissive_thickness_texture", black);
     add_byte_texture("transmissive_attenuation_color_texture", white);
-    add_float_texture("transmissive_attenuation_distance_texture", far_attenuation);
+    add_float_texture(
+        "transmissive_attenuation_distance_texture", far_attenuation);
 }
 
 void SetIdentityMatrix(frame::proto::NodeMatrix* node)
@@ -351,9 +362,10 @@ void SetIdentityMatrix(frame::proto::NodeMatrix* node)
     matrix->set_m44(1.0f);
 }
 
-void AddIdentityMatrixNode(frame::proto::SceneTree* scene_tree,
-                           const std::string& name,
-                           const std::string& parent = std::string{})
+void AddIdentityMatrixNode(
+    frame::proto::SceneTree* scene_tree,
+    const std::string& name,
+    const std::string& parent = std::string{})
 {
     auto* node = scene_tree->add_node_matrices();
     node->set_name(name);
@@ -365,10 +377,11 @@ void AddIdentityMatrixNode(frame::proto::SceneTree* scene_tree,
     SetIdentityMatrix(node);
 }
 
-void AddStaticMatrixNode(frame::proto::SceneTree* scene_tree,
-                         const std::string& name,
-                         const glm::mat4& matrix,
-                         const std::string& parent = std::string{})
+void AddStaticMatrixNode(
+    frame::proto::SceneTree* scene_tree,
+    const std::string& name,
+    const glm::mat4& matrix,
+    const std::string& parent = std::string{})
 {
     auto* node = scene_tree->add_node_matrices();
     node->set_name(name);
@@ -377,14 +390,16 @@ void AddStaticMatrixNode(frame::proto::SceneTree* scene_tree,
     {
         node->set_parent(parent);
     }
-    node->mutable_matrix()->CopyFrom(frame::json::SerializeUniformMatrix4(matrix));
+    node->mutable_matrix()->CopyFrom(
+        frame::json::SerializeUniformMatrix4(matrix));
 }
 
-void AddSceneEnumMeshNode(frame::proto::SceneTree* scene_tree,
-                          const std::string& name,
-                          const std::string& parent,
-                          frame::proto::NodeMesh::MeshEnum mesh_enum,
-                          frame::proto::NodeMesh::RenderTimeEnum render_time)
+void AddSceneEnumMeshNode(
+    frame::proto::SceneTree* scene_tree,
+    const std::string& name,
+    const std::string& parent,
+    frame::proto::NodeMesh::MeshEnum mesh_enum,
+    frame::proto::NodeMesh::RenderTimeEnum render_time)
 {
     auto* node = scene_tree->add_node_meshes();
     node->set_name(name);
@@ -393,49 +408,67 @@ void AddSceneEnumMeshNode(frame::proto::SceneTree* scene_tree,
     node->set_render_time_enum(render_time);
 }
 
-void AddSceneFileMeshNode(frame::proto::SceneTree* scene_tree,
-                          const std::string& name,
-                          const std::string& parent,
-                          const std::string& file_name,
-                          frame::proto::NodeMesh::RenderTimeEnum render_time)
+void AddSceneFileMeshNode(
+    frame::proto::SceneTree* scene_tree,
+    const std::string& name,
+    const std::string& parent,
+    const std::string& file_name,
+    frame::proto::NodeMesh::RenderTimeEnum render_time,
+    bool play_animation = false,
+    std::optional<glm::vec3> asset_front = std::nullopt,
+    std::optional<glm::vec3> asset_up = std::nullopt)
 {
     auto* node = scene_tree->add_node_meshes();
     node->set_name(name);
     node->set_parent(parent);
     node->set_file_name(file_name);
     node->set_render_time_enum(render_time);
+    node->set_play_animation(play_animation);
+    if (asset_front)
+    {
+        node->mutable_asset_front()->CopyFrom(
+            frame::json::SerializeUniformVector3(*asset_front));
+    }
+    if (asset_up)
+    {
+        node->mutable_asset_up()->CopyFrom(
+            frame::json::SerializeUniformVector3(*asset_up));
+    }
 }
 
-glm::mat4 MakeTransform(glm::vec3 translation,
-                        glm::quat rotation,
-                        glm::vec3 scale)
+glm::mat4 MakeTransform(
+    glm::vec3 translation, glm::quat rotation, glm::vec3 scale)
 {
     return glm::translate(glm::mat4(1.0f), translation) *
            glm::toMat4(glm::normalize(rotation)) *
            glm::scale(glm::mat4(1.0f), scale);
 }
 
-void SetNodeMatrix(frame::LevelInterface& level,
-                   frame::EntityId node_id,
-                   const glm::mat4& matrix)
+void SetNodeMatrix(
+    frame::LevelInterface& level,
+    frame::EntityId node_id,
+    const glm::mat4& matrix)
 {
     if (node_id == frame::NullId)
     {
         return;
     }
 
-    auto& node = dynamic_cast<frame::NodeMatrix&>(level.GetSceneNodeFromId(node_id));
+    auto& node =
+        dynamic_cast<frame::NodeMatrix&>(level.GetSceneNodeFromId(node_id));
     auto& data = node.GetData();
-    data.mutable_matrix()->CopyFrom(frame::json::SerializeUniformMatrix4(matrix));
+    data.mutable_matrix()->CopyFrom(
+        frame::json::SerializeUniformMatrix4(matrix));
     data.set_matrix_type_enum(frame::proto::NodeMatrix::STATIC_MATRIX);
     data.clear_quaternion();
 }
 
 glm::mat4 MakeHiddenTransform()
 {
-    return MakeTransform(glm::vec3(0.0f, -200.0f, 0.0f),
-                         glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                         glm::vec3(0.01f));
+    return MakeTransform(
+        glm::vec3(0.0f, -200.0f, 0.0f),
+        glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+        glm::vec3(0.01f));
 }
 
 bool MatricesNearlyEqual(const glm::mat4& lhs, const glm::mat4& rhs)
@@ -453,7 +486,8 @@ bool MatricesNearlyEqual(const glm::mat4& lhs, const glm::mat4& rhs)
     return true;
 }
 
-glm::vec3 NormalizeOrFallback(const glm::vec3& direction, const glm::vec3& fallback)
+glm::vec3 NormalizeOrFallback(
+    const glm::vec3& direction, const glm::vec3& fallback)
 {
     const float length_squared = glm::dot(direction, direction);
     if (length_squared <= 0.000001f)
@@ -464,11 +498,13 @@ glm::vec3 NormalizeOrFallback(const glm::vec3& direction, const glm::vec3& fallb
     return direction / std::sqrt(length_squared);
 }
 
-glm::vec3 ProjectDirectionOntoSurface(const glm::vec3& direction,
-                                      const glm::vec3& surface_up,
-                                      const glm::vec3& fallback)
+glm::vec3 ProjectDirectionOntoSurface(
+    const glm::vec3& direction,
+    const glm::vec3& surface_up,
+    const glm::vec3& fallback)
 {
-    const glm::vec3 up = NormalizeOrFallback(surface_up, glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::vec3 up =
+        NormalizeOrFallback(surface_up, glm::vec3(0.0f, 1.0f, 0.0f));
     const glm::vec3 tangent = direction - (glm::dot(direction, up) * up);
     return NormalizeOrFallback(tangent, fallback);
 }
@@ -528,40 +564,43 @@ void FrameSceneBridge::Attach(frame::WindowInterface* window)
     window_ = window;
 }
 
-void FrameSceneBridge::SetViewState(const Pawn* controlled_pawn,
-                                    const CameraBoon* camera_boon)
+void FrameSceneBridge::SetViewState(
+    const Pawn* controlled_pawn, const CameraBoon* camera_boon)
 {
     controlled_pawn_ = controlled_pawn;
     camera_boon_ = camera_boon;
 }
 
-CameraPose FrameSceneBridge::BuildFollowCameraPose(const Pawn* controlled_pawn,
-                                                   const CameraBoon& camera_boon) const
+CameraPose FrameSceneBridge::BuildFollowCameraPose(
+    const Pawn* controlled_pawn, const CameraBoon& camera_boon) const
 {
-    const float horizontal_distance =
-        camera_boon.GetDistanceMeters() * std::cos(camera_boon.GetPitchRadians());
-    const float vertical_distance =
-        camera_boon.GetDistanceMeters() * std::sin(camera_boon.GetPitchRadians());
+    const float horizontal_distance = camera_boon.GetDistanceMeters() *
+                                      std::cos(camera_boon.GetPitchRadians());
+    const float vertical_distance = camera_boon.GetDistanceMeters() *
+                                    std::sin(camera_boon.GetPitchRadians());
 
     if (controlled_pawn == nullptr)
     {
         CameraPose pose;
         const glm::vec3 focus(0.0f, camera_boon.GetFocusHeightMeters(), 0.0f);
-        const glm::vec3 forward = BuildCameraForwardOnGround(nullptr, camera_boon);
-        pose.position =
-            focus - (forward * horizontal_distance) + glm::vec3(0.0f, vertical_distance, 0.0f);
+        const glm::vec3 forward =
+            BuildCameraForwardOnGround(nullptr, camera_boon);
+        pose.position = focus - (forward * horizontal_distance) +
+                        glm::vec3(0.0f, vertical_distance, 0.0f);
         pose.target = focus;
         pose.up = glm::vec3(0.0f, 1.0f, 0.0f);
         return pose;
     }
 
     const glm::vec3 up = controlled_pawn->GetSurfaceUp();
-    const glm::vec3 focus =
-        controlled_pawn->GetRenderPosition() + (up * camera_boon.GetFocusHeightMeters());
-    const glm::vec3 forward = BuildCameraForwardOnGround(controlled_pawn, camera_boon);
+    const glm::vec3 focus = controlled_pawn->GetRenderPosition() +
+                            (up * camera_boon.GetFocusHeightMeters());
+    const glm::vec3 forward =
+        BuildCameraForwardOnGround(controlled_pawn, camera_boon);
 
     CameraPose pose;
-    pose.position = focus - (forward * horizontal_distance) + (up * vertical_distance);
+    pose.position =
+        focus - (forward * horizontal_distance) + (up * vertical_distance);
     pose.target = focus;
     pose.up = up;
     return pose;
@@ -577,38 +616,42 @@ void FrameSceneBridge::CacheHandles(frame::LevelInterface& level)
 }
 
 glm::vec3 FrameSceneBridge::BuildCameraForwardOnGround(
-    const Pawn* controlled_pawn,
-    const CameraBoon& camera_boon) const
+    const Pawn* controlled_pawn, const CameraBoon& camera_boon) const
 {
-    const glm::vec3 base_forward(std::cos(camera_boon.GetYawRadians()),
-                                 0.0f,
-                                 std::sin(camera_boon.GetYawRadians()));
+    const glm::vec3 base_forward(
+        std::cos(camera_boon.GetYawRadians()),
+        0.0f,
+        std::sin(camera_boon.GetYawRadians()));
     if (controlled_pawn == nullptr)
     {
         return NormalizeOrFallback(base_forward, glm::vec3(1.0f, 0.0f, 0.0f));
     }
 
-    return ProjectDirectionOntoSurface(base_forward,
-                                       controlled_pawn->GetSurfaceUp(),
-                                       controlled_pawn->GetRenderFacingDirection());
+    return ProjectDirectionOntoSurface(
+        base_forward,
+        controlled_pawn->GetSurfaceUp(),
+        controlled_pawn->GetRenderFacingDirection());
 }
 
-glm::vec3 FrameSceneBridge::BuildCameraBoonLocalOffset(const CameraBoon& camera_boon) const
+glm::vec3 FrameSceneBridge::BuildCameraBoonLocalOffset(
+    const CameraBoon& camera_boon) const
 {
-    const float horizontal_distance =
-        camera_boon.GetDistanceMeters() * std::cos(camera_boon.GetPitchRadians());
-    const float vertical_distance =
-        camera_boon.GetDistanceMeters() * std::sin(camera_boon.GetPitchRadians());
-    return glm::vec3(-horizontal_distance,
-                     camera_boon.GetFocusHeightMeters() + vertical_distance,
-                     0.0f);
+    const float horizontal_distance = camera_boon.GetDistanceMeters() *
+                                      std::cos(camera_boon.GetPitchRadians());
+    const float vertical_distance = camera_boon.GetDistanceMeters() *
+                                    std::sin(camera_boon.GetPitchRadians());
+    return glm::vec3(
+        -horizontal_distance,
+        camera_boon.GetFocusHeightMeters() + vertical_distance,
+        0.0f);
 }
 
-void FrameSceneBridge::SetNodeMatrixIfChanged(frame::LevelInterface& level,
-                                              frame::EntityId node_id,
-                                              const glm::mat4& matrix,
-                                              glm::mat4* cached_matrix,
-                                              bool* cached) const
+void FrameSceneBridge::SetNodeMatrixIfChanged(
+    frame::LevelInterface& level,
+    frame::EntityId node_id,
+    const glm::mat4& matrix,
+    glm::mat4* cached_matrix,
+    bool* cached) const
 {
     if (*cached && MatricesNearlyEqual(*cached_matrix, matrix))
     {
@@ -620,59 +663,64 @@ void FrameSceneBridge::SetNodeMatrixIfChanged(frame::LevelInterface& level,
     *cached = true;
 }
 
-void FrameSceneBridge::UpdateWorldHolders(frame::LevelInterface& level,
-                                          const Pawn* /*controlled_pawn*/) const
+void FrameSceneBridge::UpdateWorldHolders(
+    frame::LevelInterface& level, const Pawn* /*controlled_pawn*/) const
 {
     if (world_holders_initialized_)
     {
         return;
     }
 
-    const glm::mat4 holder_transform =
-        MakeTransform(glm::vec3(0.0f),
-                      glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                      glm::vec3(1.0f));
+    const glm::mat4 holder_transform = MakeTransform(
+        glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
     SetNodeMatrix(level, ground_holder_matrix_id_, holder_transform);
     SetNodeMatrix(level, guide_holder_matrix_id_, holder_transform);
     SetNodeMatrix(level, landmark_holder_matrix_id_, holder_transform);
     world_holders_initialized_ = true;
 }
 
-void FrameSceneBridge::UpdatePawnRoot(frame::LevelInterface& level,
-                                      const Pawn* controlled_pawn,
-                                      const CameraBoon& camera_boon) const
+void FrameSceneBridge::UpdatePawnRoot(
+    frame::LevelInterface& level,
+    const Pawn* controlled_pawn,
+    const CameraBoon& camera_boon) const
 {
     if (controlled_pawn == nullptr)
     {
         const glm::mat4 hidden_transform = MakeHiddenTransform();
-        SetNodeMatrixIfChanged(level,
-                               pawn_root_matrix_id_,
-                               hidden_transform,
-                               &cached_pawn_root_matrix_,
-                               &pawn_root_matrix_cached_);
-        SetNodeMatrixIfChanged(level,
-                               camera_boon_matrix_id_,
-                               hidden_transform,
-                               &cached_camera_boon_matrix_,
-                               &camera_boon_matrix_cached_);
+        SetNodeMatrixIfChanged(
+            level,
+            pawn_root_matrix_id_,
+            hidden_transform,
+            &cached_pawn_root_matrix_,
+            &pawn_root_matrix_cached_);
+        SetNodeMatrixIfChanged(
+            level,
+            camera_boon_matrix_id_,
+            hidden_transform,
+            &cached_camera_boon_matrix_,
+            &camera_boon_matrix_cached_);
         return;
     }
 
     const glm::quat pawn_orientation = controlled_pawn->GetRenderOrientation();
-    SetNodeMatrixIfChanged(level,
-                           pawn_root_matrix_id_,
-                           MakeTransform(controlled_pawn->GetRenderPosition(),
-                                         pawn_orientation,
-                                         glm::vec3(1.0f)),
-                           &cached_pawn_root_matrix_,
-                           &pawn_root_matrix_cached_);
-    SetNodeMatrixIfChanged(level,
-                           camera_boon_matrix_id_,
-                           MakeTransform(BuildCameraBoonLocalOffset(camera_boon),
-                                         glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                                         glm::vec3(1.0f)),
-                           &cached_camera_boon_matrix_,
-                           &camera_boon_matrix_cached_);
+    SetNodeMatrixIfChanged(
+        level,
+        pawn_root_matrix_id_,
+        MakeTransform(
+            controlled_pawn->GetRenderPosition(),
+            pawn_orientation,
+            glm::vec3(1.0f)),
+        &cached_pawn_root_matrix_,
+        &pawn_root_matrix_cached_);
+    SetNodeMatrixIfChanged(
+        level,
+        camera_boon_matrix_id_,
+        MakeTransform(
+            BuildCameraBoonLocalOffset(camera_boon),
+            glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+            glm::vec3(1.0f)),
+        &cached_camera_boon_matrix_,
+        &camera_boon_matrix_cached_);
 
     if (debug_pose_trace_)
     {
@@ -680,19 +728,21 @@ void FrameSceneBridge::UpdatePawnRoot(frame::LevelInterface& level,
         if ((now - last_pose_trace_at_) >= std::chrono::milliseconds(250))
         {
             last_pose_trace_at_ = now;
-            const glm::vec3 pawn_position = controlled_pawn->GetRenderPosition();
+            const glm::vec3 pawn_position =
+                controlled_pawn->GetRenderPosition();
             glm::vec3 node_position(0.0f);
             if (pawn_root_matrix_id_ != frame::NullId)
             {
-                const auto& node = level.GetSceneNodeFromId(pawn_root_matrix_id_);
+                const auto& node =
+                    level.GetSceneNodeFromId(pawn_root_matrix_id_);
                 const glm::mat4 node_model = node.GetLocalModel(0.0);
                 node_position = glm::vec3(node_model[3]);
             }
-            std::cout << "[pose] pawn=("
-                      << pawn_position.x << "," << pawn_position.y << "," << pawn_position.z
+            std::cout << "[pose] pawn=(" << pawn_position.x << ","
+                      << pawn_position.y << "," << pawn_position.z
                       << ") pawn_yaw=" << controlled_pawn->GetRenderYawRadians()
-                      << " node=(" << node_position.x << "," << node_position.y << ","
-                      << node_position.z << ")"
+                      << " node=(" << node_position.x << "," << node_position.y
+                      << "," << node_position.z << ")"
                       << " camera_yaw=" << camera_boon.GetYawRadians()
                       << std::endl;
         }
@@ -703,15 +753,15 @@ frame::proto::Level FrameSceneBridge::BuildLevelProto() const
 {
     frame::proto::Level level;
     const std::string ground_mesh_file_name = ResolveGroundMeshFileName();
-    const auto make_skybox_texture = [](const std::string& name)
-    {
-        return MakeCubemapTextureFromFiles(name,
-                                           "asset/cubemap/positive_x.png",
-                                           "asset/cubemap/negative_x.png",
-                                           "asset/cubemap/positive_y.png",
-                                           "asset/cubemap/negative_y.png",
-                                           "asset/cubemap/positive_z.png",
-                                           "asset/cubemap/negative_z.png");
+    const auto make_skybox_texture = [](const std::string& name) {
+        return MakeCubemapTextureFromFiles(
+            name,
+            "asset/cubemap/positive_x.png",
+            "asset/cubemap/negative_x.png",
+            "asset/cubemap/positive_y.png",
+            "asset/cubemap/negative_y.png",
+            "asset/cubemap/positive_z.png",
+            "asset/cubemap/negative_z.png");
     };
 
     level.set_name("grpcMMOThirdPerson");
@@ -732,16 +782,16 @@ frame::proto::Level FrameSceneBridge::BuildLevelProto() const
     AddIdentityMatrixNode(scene_tree, "landmark_holder", "mesh_holder");
     AddIdentityMatrixNode(scene_tree, "pawn_root_matrix", "mesh_holder");
     AddIdentityMatrixNode(scene_tree, "camera_boon_matrix", "pawn_root_matrix");
-    AddStaticMatrixNode(scene_tree,
-                        "ground_matrix",
-                        BuildGroundTransform(),
-                        "ground_holder");
-    AddStaticMatrixNode(scene_tree,
-                        "pawn_body_matrix",
-                        MakeTransform(glm::vec3(0.0f, kPawnLiftMeters, 0.0f),
-                                      glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                                      kPawnBodyScale),
-                        "pawn_root_matrix");
+    AddStaticMatrixNode(
+        scene_tree, "ground_matrix", BuildGroundTransform(), "ground_holder");
+    AddStaticMatrixNode(
+        scene_tree,
+        "pawn_body_matrix",
+        MakeTransform(
+            glm::vec3(0.0f, kPawnLiftMeters, 0.0f),
+            glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+            kPawnBodyScale),
+        "pawn_root_matrix");
 
     auto* camera = scene_tree->add_node_cameras();
     camera->set_name("camera");
@@ -759,23 +809,29 @@ frame::proto::Level FrameSceneBridge::BuildLevelProto() const
     camera->mutable_up()->set_y(1.0f);
     camera->mutable_up()->set_z(0.0f);
 
-    AddSceneEnumMeshNode(scene_tree,
-                         "CubeMapMesh",
-                         "env_holder",
-                         frame::proto::NodeMesh::CUBE,
-                         frame::proto::NodeMesh::SKYBOX_RENDER_TIME);
+    AddSceneEnumMeshNode(
+        scene_tree,
+        "CubeMapMesh",
+        "env_holder",
+        frame::proto::NodeMesh::CUBE,
+        frame::proto::NodeMesh::SKYBOX_RENDER_TIME);
 
-    AddSceneFileMeshNode(scene_tree,
-                         "GroundMesh",
-                         "ground_matrix",
-                         ground_mesh_file_name,
-                         frame::proto::NodeMesh::SCENE_RENDER_TIME);
+    AddSceneFileMeshNode(
+        scene_tree,
+        "GroundMesh",
+        "ground_matrix",
+        ground_mesh_file_name,
+        frame::proto::NodeMesh::SCENE_RENDER_TIME);
 
-    AddSceneFileMeshNode(scene_tree,
-                         "PawnBodyMesh",
-                         "pawn_body_matrix",
-                         "player_cube.gltf",
-                         frame::proto::NodeMesh::SCENE_RENDER_TIME);
+    AddSceneFileMeshNode(
+        scene_tree,
+        "PawnBodyMesh",
+        "pawn_body_matrix",
+        "cesium_man/CesiumMan.glb",
+        frame::proto::NodeMesh::SCENE_RENDER_TIME,
+        true,
+        glm::vec3(0.0f, 0.0f, 1.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f));
 
     auto* light = scene_tree->add_node_lights();
     light->set_name("sun");
