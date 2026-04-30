@@ -61,29 +61,36 @@ class SqliteStorage final : public StorageBackend
         const std::string& login_name,
         const std::string& password,
         const std::string& display_name,
-        std::string* error_message = nullptr);
+        std::string* error_message = nullptr
+    );
     std::optional<AccountRecord> Login(
-        const std::string& login_name, const std::string& password);
+        const std::string& login_name, const std::string& password
+    );
     std::vector<CharacterRecord> ListCharacters(
-        const std::string& account_access_token, const std::string& realm_id);
+        const std::string& account_access_token, const std::string& realm_id
+    );
     std::optional<CharacterRecord> CreateCharacter(
         const std::string& account_access_token,
         const std::string& realm_id,
         const std::string& name,
-        std::string* error_message = nullptr);
+        std::string* error_message = nullptr
+    );
     std::optional<SessionGrantRecord> CreateSessionGrant(
         const std::string& account_access_token,
         const std::string& realm_id,
         const std::string& character_id,
-        std::string* error_message = nullptr);
+        std::string* error_message = nullptr
+    );
     std::optional<SessionGrantRecord> FindSessionGrant(
-        const std::string& session_token);
+        const std::string& session_token
+    );
 
     static std::string MakeAccountAccessToken(const std::string& account_id);
 
   private:
     std::optional<std::string> AccountIdFromAccessToken(
-        const std::string& account_access_token) const;
+        const std::string& account_access_token
+    ) const;
     void EnsureOpen();
     void EnsureSchema();
     void EnsureSeedData();
@@ -91,7 +98,8 @@ class SqliteStorage final : public StorageBackend
     std::optional<CharacterRecord> FindCharacterById(
         const std::string& account_id,
         const std::string& realm_id,
-        const std::string& character_id);
+        const std::string& character_id
+    );
 
     BackendConfig config_;
     sqlite3* db_ = nullptr;

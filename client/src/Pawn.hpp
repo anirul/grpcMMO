@@ -35,7 +35,8 @@ class Pawn : public Actor
     void SetPredictedPosition(const glm::vec3& position);
     void SetPredictedSurfaceUp(const glm::vec3& surface_up);
     void SetPredictedRenderState(
-        const glm::vec3& position, const glm::vec3& surface_up);
+        const glm::vec3& position, const glm::vec3& surface_up
+    );
 
     [[nodiscard]] const std::string& GetEntityId() const;
     [[nodiscard]] glm::vec3 GetRenderFacingDirection() const;

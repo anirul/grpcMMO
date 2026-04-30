@@ -38,11 +38,14 @@ struct CubeSphereTileAddress
         return {{
             CubeSphereTileAddress{face, lod + 1u, tile_x * 2u, tile_y * 2u},
             CubeSphereTileAddress{
-                face, lod + 1u, tile_x * 2u + 1u, tile_y * 2u},
+                face, lod + 1u, tile_x * 2u + 1u, tile_y * 2u
+            },
             CubeSphereTileAddress{
-                face, lod + 1u, tile_x * 2u, tile_y * 2u + 1u},
+                face, lod + 1u, tile_x * 2u, tile_y * 2u + 1u
+            },
             CubeSphereTileAddress{
-                face, lod + 1u, tile_x * 2u + 1u, tile_y * 2u + 1u},
+                face, lod + 1u, tile_x * 2u + 1u, tile_y * 2u + 1u
+            },
         }};
     }
 };

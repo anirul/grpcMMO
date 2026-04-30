@@ -40,7 +40,8 @@ TEST(PlanetMathTests, MarsScaleOneToTwoHundredMatchesReferenceRadius)
 {
     EXPECT_NEAR(kMarsRadiusAtScale1To200M, 16980.95, 1e-9);
     EXPECT_NEAR(
-        ScaledRadiusMeters(kMarsMolaReferenceRadiusM, 200.0), 16980.95, 1e-9);
+        ScaledRadiusMeters(kMarsMolaReferenceRadiusM, 200.0), 16980.95, 1e-9
+    );
 }
 
 TEST(PlanetMathTests, CubeSphereChildrenSplitTileIntoQuadrants)

@@ -19,8 +19,8 @@ class CameraDirector : public Object
 
     CameraActor& CreateCamera(const std::string& camera_id);
     [[nodiscard]] CameraActor* FindCamera(const std::string& camera_id);
-    [[nodiscard]] const CameraActor* FindCamera(
-        const std::string& camera_id) const;
+    [[nodiscard]] const CameraActor* FindCamera(const std::string& camera_id
+    ) const;
     [[nodiscard]] bool SetActiveCamera(const std::string& camera_id);
     [[nodiscard]] CameraActor* GetActiveCamera();
     [[nodiscard]] const CameraActor* GetActiveCamera() const;

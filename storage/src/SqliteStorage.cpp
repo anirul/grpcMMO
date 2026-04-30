@@ -100,7 +100,8 @@ std::optional<AccountRecord> SqliteStorage::CreateAccount(
     const std::string& login_name,
     const std::string& password,
     const std::string& display_name,
-    std::string* error_message)
+    std::string* error_message
+)
 {
     std::scoped_lock lock(mutex_);
     EnsureOpen();
@@ -110,7 +111,8 @@ std::optional<AccountRecord> SqliteStorage::CreateAccount(
     Statement statement(
         db_,
         "INSERT INTO accounts(account_id, login_name, password, display_name) "
-        "VALUES(?1, ?2, ?3, ?4);");
+        "VALUES(?1, ?2, ?3, ?4);"
+    );
     BindText(statement.Get(), 1, account_id);
     BindText(statement.Get(), 2, login_name);
     BindText(statement.Get(), 3, password);
@@ -132,7 +134,8 @@ std::optional<AccountRecord> SqliteStorage::CreateAccount(
 }
 
 std::optional<AccountRecord> SqliteStorage::Login(
-    const std::string& login_name, const std::string& password)
+    const std::string& login_name, const std::string& password
+)
 {
     std::scoped_lock lock(mutex_);
     EnsureOpen();
@@ -140,7 +143,8 @@ std::optional<AccountRecord> SqliteStorage::Login(
     Statement statement(
         db_,
         "SELECT account_id, display_name "
-        "FROM accounts WHERE login_name = ?1 AND password = ?2;");
+        "FROM accounts WHERE login_name = ?1 AND password = ?2;"
+    );
     BindText(statement.Get(), 1, login_name);
     BindText(statement.Get(), 2, password);
 
@@ -156,7 +160,8 @@ std::optional<AccountRecord> SqliteStorage::Login(
 }
 
 std::vector<CharacterRecord> SqliteStorage::ListCharacters(
-    const std::string& account_access_token, const std::string& realm_id)
+    const std::string& account_access_token, const std::string& realm_id
+)
 {
     std::vector<CharacterRecord> records;
 
@@ -174,7 +179,8 @@ std::vector<CharacterRecord> SqliteStorage::ListCharacters(
         "SELECT character_id, account_id, realm_id, name, planet_id, zone_id, "
         "last_seen_time_ms, online "
         "FROM characters WHERE account_id = ?1 AND realm_id = ?2 ORDER BY "
-        "name;");
+        "name;"
+    );
     BindText(statement.Get(), 1, *account_id);
     BindText(statement.Get(), 2, realm_id);
 
@@ -187,8 +193,9 @@ std::vector<CharacterRecord> SqliteStorage::ListCharacters(
         record.name = ColumnText(statement.Get(), 3);
         record.planet_id = ColumnText(statement.Get(), 4);
         record.zone_id = ColumnText(statement.Get(), 5);
-        record.last_seen_time_ms = static_cast<std::uint64_t>(
-            sqlite3_column_int64(statement.Get(), 6));
+        record.last_seen_time_ms =
+            static_cast<std::uint64_t>(sqlite3_column_int64(statement.Get(), 6)
+            );
         record.online = sqlite3_column_int(statement.Get(), 7) != 0;
         records.push_back(std::move(record));
     }
@@ -200,7 +207,8 @@ std::optional<CharacterRecord> SqliteStorage::CreateCharacter(
     const std::string& account_access_token,
     const std::string& realm_id,
     const std::string& name,
-    std::string* error_message)
+    std::string* error_message
+)
 {
     std::scoped_lock lock(mutex_);
     EnsureOpen();
@@ -223,7 +231,8 @@ std::optional<CharacterRecord> SqliteStorage::CreateCharacter(
         "INSERT INTO characters(character_id, account_id, realm_id, name, "
         "planet_id, "
         "zone_id, last_seen_time_ms, online) "
-        "VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, 0);");
+        "VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, 0);"
+    );
     BindText(statement.Get(), 1, character_id);
     BindText(statement.Get(), 2, *account_id);
     BindText(statement.Get(), 3, realm_id);
@@ -249,7 +258,8 @@ std::optional<SessionGrantRecord> SqliteStorage::CreateSessionGrant(
     const std::string& account_access_token,
     const std::string& realm_id,
     const std::string& character_id,
-    std::string* error_message)
+    std::string* error_message
+)
 {
     std::scoped_lock lock(mutex_);
     EnsureOpen();
@@ -285,7 +295,8 @@ std::optional<SessionGrantRecord> SqliteStorage::CreateSessionGrant(
         "INSERT INTO session_grants(session_id, session_token, account_id, "
         "character_id, "
         "realm_id, planet_id, zone_id, expires_at_ms) "
-        "VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8);");
+        "VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8);"
+    );
     BindText(statement.Get(), 1, session_id);
     BindText(statement.Get(), 2, session_token);
     BindText(statement.Get(), 3, *account_id);
@@ -294,7 +305,8 @@ std::optional<SessionGrantRecord> SqliteStorage::CreateSessionGrant(
     BindText(statement.Get(), 6, character->planet_id);
     BindText(statement.Get(), 7, character->zone_id);
     sqlite3_bind_int64(
-        statement.Get(), 8, static_cast<sqlite3_int64>(expires_at_ms));
+        statement.Get(), 8, static_cast<sqlite3_int64>(expires_at_ms)
+    );
 
     if (sqlite3_step(statement.Get()) != SQLITE_DONE)
     {
@@ -319,7 +331,8 @@ std::optional<SessionGrantRecord> SqliteStorage::CreateSessionGrant(
 }
 
 std::optional<SessionGrantRecord> SqliteStorage::FindSessionGrant(
-    const std::string& session_token)
+    const std::string& session_token
+)
 {
     std::scoped_lock lock(mutex_);
     EnsureOpen();
@@ -331,7 +344,8 @@ std::optional<SessionGrantRecord> SqliteStorage::FindSessionGrant(
         "c.name, sg.realm_id, sg.planet_id, sg.zone_id, sg.expires_at_ms "
         "FROM session_grants sg "
         "JOIN characters c ON c.character_id = sg.character_id "
-        "WHERE sg.session_token = ?1;");
+        "WHERE sg.session_token = ?1;"
+    );
     BindText(statement.Get(), 1, session_token);
 
     if (sqlite3_step(statement.Get()) != SQLITE_ROW)
@@ -365,7 +379,8 @@ std::string SqliteStorage::MakeAccountAccessToken(const std::string& account_id)
 }
 
 std::optional<std::string> SqliteStorage::AccountIdFromAccessToken(
-    const std::string& account_access_token) const
+    const std::string& account_access_token
+) const
 {
     constexpr const char* kPrefix = "acct:";
     if (account_access_token.rfind(kPrefix, 0) != 0)
@@ -394,7 +409,8 @@ void SqliteStorage::EnsureOpen()
         config_.connection_string.c_str(),
         &db_,
         SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX,
-        nullptr);
+        nullptr
+    );
 }
 
 void SqliteStorage::EnsureSchema()
@@ -405,7 +421,8 @@ void SqliteStorage::EnsureSchema()
         "account_id TEXT PRIMARY KEY,"
         "login_name TEXT NOT NULL UNIQUE,"
         "password TEXT NOT NULL,"
-        "display_name TEXT NOT NULL);");
+        "display_name TEXT NOT NULL);"
+    );
     Exec(
         db_,
         "CREATE TABLE IF NOT EXISTS characters ("
@@ -417,7 +434,8 @@ void SqliteStorage::EnsureSchema()
         "zone_id TEXT NOT NULL,"
         "last_seen_time_ms INTEGER NOT NULL,"
         "online INTEGER NOT NULL DEFAULT 0,"
-        "UNIQUE(realm_id, name));");
+        "UNIQUE(realm_id, name));"
+    );
     Exec(
         db_,
         "CREATE TABLE IF NOT EXISTS session_grants ("
@@ -428,7 +446,8 @@ void SqliteStorage::EnsureSchema()
         "realm_id TEXT NOT NULL,"
         "planet_id TEXT NOT NULL,"
         "zone_id TEXT NOT NULL,"
-        "expires_at_ms INTEGER NOT NULL);");
+        "expires_at_ms INTEGER NOT NULL);"
+    );
 }
 
 void SqliteStorage::EnsureSeedData()
@@ -437,7 +456,8 @@ void SqliteStorage::EnsureSeedData()
         db_,
         "INSERT OR IGNORE INTO accounts(account_id, login_name, password, "
         "display_name) "
-        "VALUES('acct-demo', 'demo', 'demo', 'Demo Account');");
+        "VALUES('acct-demo', 'demo', 'demo', 'Demo Account');"
+    );
 }
 
 std::string SqliteStorage::MakeId(const std::string& prefix)
@@ -451,14 +471,16 @@ std::string SqliteStorage::MakeId(const std::string& prefix)
 std::optional<CharacterRecord> SqliteStorage::FindCharacterById(
     const std::string& account_id,
     const std::string& realm_id,
-    const std::string& character_id)
+    const std::string& character_id
+)
 {
     Statement statement(
         db_,
         "SELECT character_id, account_id, realm_id, name, planet_id, zone_id, "
         "last_seen_time_ms, online "
         "FROM characters WHERE account_id = ?1 AND realm_id = ?2 AND "
-        "character_id = ?3;");
+        "character_id = ?3;"
+    );
     BindText(statement.Get(), 1, account_id);
     BindText(statement.Get(), 2, realm_id);
     BindText(statement.Get(), 3, character_id);

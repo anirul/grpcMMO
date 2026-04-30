@@ -35,13 +35,15 @@ class AuthoritativeWorld
 
     explicit AuthoritativeWorld(
         double planet_radius_m =
-            grpcmmo::shared::planet::kMarsPreviewPatch000.planet_radius_m);
+            grpcmmo::shared::planet::kMarsPreviewPatch000.planet_radius_m
+    );
 
     ConnectResult ConnectPlayer(const ConnectedPlayer& player);
     std::optional<grpcmmo::world::v1::ReplicationBatch> ApplyInput(
         const std::string& session_id,
         const grpcmmo::session::v1::InputFrame& input_frame,
-        std::uint64_t heartbeat_interval_ms);
+        std::uint64_t heartbeat_interval_ms
+    );
     void DisconnectPlayer(const std::string& session_id);
 
   private:
@@ -64,12 +66,14 @@ class AuthoritativeWorld
     grpcmmo::world::v1::EntityPatch MakeEntityPatch(
         const PlayerState& player_state,
         std::uint64_t server_time_ms,
-        std::uint64_t server_tick) const;
+        std::uint64_t server_tick
+    ) const;
     grpcmmo::world::v1::ReplicationBatch MakeReplicationBatch(
         const PlayerState& player_state,
         std::uint64_t server_time_ms,
         std::uint64_t server_tick,
-        std::uint64_t last_processed_input_sequence);
+        std::uint64_t last_processed_input_sequence
+    );
 
     double planet_radius_m_;
     grpcmmo::shared::planet::PreviewPatchTerrainSampler terrain_sampler_{};

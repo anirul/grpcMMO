@@ -22,7 +22,8 @@ std::filesystem::path ResolveExecutablePath()
     while (true)
     {
         const DWORD length = GetModuleFileNameW(
-            nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+            nullptr, buffer.data(), static_cast<DWORD>(buffer.size())
+        );
         if (length == 0)
         {
             break;
@@ -63,7 +64,8 @@ bool IsProjectRoot(const std::filesystem::path& path)
 }
 
 std::optional<std::filesystem::path> FindProjectRootFrom(
-    const std::filesystem::path& start)
+    const std::filesystem::path& start
+)
 {
     auto candidate = NormalizePath(start);
     while (true)

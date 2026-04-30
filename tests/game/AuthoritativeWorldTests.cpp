@@ -24,7 +24,8 @@ using grpcmmo::shared::planet::WorldPositionToLocal;
 
 ConnectedPlayer MakePlayer(
     const std::string& session_id = "session-1",
-    const std::string& character_id = "char-1")
+    const std::string& character_id = "char-1"
+)
 {
     ConnectedPlayer player;
     player.session_id = session_id;
@@ -43,8 +44,8 @@ glm::dvec3 ToDVec3(const grpcmmo::world::v1::Vector3d& value)
 
 glm::dquat ToDQuat(const grpcmmo::world::v1::Quaterniond& value)
 {
-    return glm::normalize(
-        glm::dquat(value.w(), value.x(), value.y(), value.z()));
+    return glm::normalize(glm::dquat(value.w(), value.x(), value.y(), value.z())
+    );
 }
 
 const grpcmmo::shared::planet::TangentFrame& PreviewPatchFrame()
@@ -68,7 +69,8 @@ glm::vec3 ToLocalDirection(const glm::dvec3& world_direction)
     return glm::normalize(glm::vec3(
         static_cast<float>(local_direction.x),
         static_cast<float>(local_direction.y),
-        static_cast<float>(local_direction.z)));
+        static_cast<float>(local_direction.z)
+    ));
 }
 
 glm::dvec3 ToLocalPosition(const grpcmmo::world::v1::EntityPatch& patch)
@@ -76,19 +78,22 @@ glm::dvec3 ToLocalPosition(const grpcmmo::world::v1::EntityPatch& patch)
     return WorldPositionToLocal(
         ToDVec3(patch.transform().position_m()),
         PreviewPatchOriginPlanetPosition(),
-        PreviewPatchFrame());
+        PreviewPatchFrame()
+    );
 }
 
 glm::vec3 ForwardFromPatch(const grpcmmo::world::v1::EntityPatch& patch)
 {
     const glm::dvec3 world_forward = glm::rotate(
-        ToDQuat(patch.transform().orientation()), glm::dvec3(1.0, 0.0, 0.0));
+        ToDQuat(patch.transform().orientation()), glm::dvec3(1.0, 0.0, 0.0)
+    );
     return ToLocalDirection(world_forward);
 }
 
 double ExpectedAltitudeFromPreviewTerrain(const glm::dvec3& position_m)
 {
-    static PreviewPatchTerrainSampler sampler = [] {
+    static PreviewPatchTerrainSampler sampler = []
+    {
         PreviewPatchTerrainSampler instance;
         (void)instance.Load(kMarsPreviewPatch000);
         return instance;
@@ -112,7 +117,8 @@ TEST(AuthoritativeWorldTest, ConnectPlayerReturnsControlledInitialEntity)
     EXPECT_EQ(result.initial_entity.metadata().display_name(), "Explorer");
     EXPECT_EQ(
         result.initial_entity.metadata().kind(),
-        grpcmmo::world::v1::ENTITY_KIND_PLAYER);
+        grpcmmo::world::v1::ENTITY_KIND_PLAYER
+    );
     EXPECT_TRUE(result.initial_entity.metadata().controlled_entity());
     ASSERT_EQ(result.initial_batch.entities_size(), 1);
     EXPECT_EQ(result.initial_batch.entities(0).entity_id(), "entity-char-1");
@@ -144,14 +150,17 @@ TEST(AuthoritativeWorldTest, ApplyInputClampsMovementToServerSpeedLimit)
         moved_local_position - initial_local_position;
 
     EXPECT_NEAR(
-        glm::length(glm::dvec2(local_delta.x, local_delta.z)), 0.2, 0.0005);
+        glm::length(glm::dvec2(local_delta.x, local_delta.z)), 0.2, 0.0005
+    );
     EXPECT_NEAR(local_delta.x, 0.2, 0.0005);
     EXPECT_NEAR(local_delta.z, 0.0, 0.0005);
     EXPECT_NEAR(
         AltitudeFromPosition(
-            moved_position, kMarsPreviewPatch000.planet_radius_m),
+            moved_position, kMarsPreviewPatch000.planet_radius_m
+        ),
         ExpectedAltitudeFromPreviewTerrain(moved_position),
-        0.0005);
+        0.0005
+    );
 }
 
 TEST(AuthoritativeWorldTest, ApplyInputUsesFacingDirectionVectorWhenProvided)
@@ -176,7 +185,8 @@ TEST(AuthoritativeWorldTest, ApplyInputUsesFacingDirectionVectorWhenProvided)
 
 TEST(
     AuthoritativeWorldTest,
-    ApplyInputFallsBackToMovementDirectionWhenFacingIsMissing)
+    ApplyInputFallsBackToMovementDirectionWhenFacingIsMissing
+)
 {
     AuthoritativeWorld world;
     world.ConnectPlayer(MakePlayer());

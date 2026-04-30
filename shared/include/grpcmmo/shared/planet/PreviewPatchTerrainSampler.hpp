@@ -30,7 +30,8 @@ class PreviewPatchTerrainSampler
         float south_west_height_m,
         float south_east_height_m,
         double row_t,
-        double col_t)
+        double col_t
+    )
     {
         const double clamped_row_t = Clamp01(row_t);
         const double clamped_col_t = Clamp01(col_t);
@@ -63,7 +64,8 @@ class PreviewPatchTerrainSampler
     }
 
     [[nodiscard]] bool Load(
-        const PreviewPatchConfig& config = kMarsPreviewPatch000)
+        const PreviewPatchConfig& config = kMarsPreviewPatch000
+    )
     {
         Reset();
         config_ = config;
@@ -106,9 +108,11 @@ class PreviewPatchTerrainSampler
             source_origin_height_m_ =
                 ExtractJsonNumber(metadata, "origin_height_m");
             rows_ = static_cast<std::uint32_t>(
-                std::llround(ExtractJsonNumber(metadata, "rows")));
+                std::llround(ExtractJsonNumber(metadata, "rows"))
+            );
             cols_ = static_cast<std::uint32_t>(
-                std::llround(ExtractJsonNumber(metadata, "cols")));
+                std::llround(ExtractJsonNumber(metadata, "cols"))
+            );
             relative_heights_m_ =
                 ReadRelativeHeights(height_path, rows_, cols_);
 
@@ -163,7 +167,8 @@ class PreviewPatchTerrainSampler
     }
 
     [[nodiscard]] double SampleAbsoluteAltitudeM(
-        const glm::dvec3& approx_world_position) const
+        const glm::dvec3& approx_world_position
+    ) const
     {
         if (!loaded_)
         {
@@ -177,26 +182,31 @@ class PreviewPatchTerrainSampler
     }
 
     [[nodiscard]] glm::dvec3 GroundWorldPosition(
-        const glm::dvec3& approx_world_position) const
+        const glm::dvec3& approx_world_position
+    ) const
     {
         return GroundWorldPosition(
-            approx_world_position, config_.planet_radius_m);
+            approx_world_position, config_.planet_radius_m
+        );
     }
 
     [[nodiscard]] glm::dvec3 GroundWorldPosition(
-        const glm::dvec3& approx_world_position, double planet_radius_m) const
+        const glm::dvec3& approx_world_position, double planet_radius_m
+    ) const
     {
         return ProjectToAltitude(
             approx_world_position,
             planet_radius_m,
-            SampleAbsoluteAltitudeM(approx_world_position));
+            SampleAbsoluteAltitudeM(approx_world_position)
+        );
     }
 
-    [[nodiscard]] glm::vec3 GroundLocalPosition(
-        const glm::vec3& local_position) const
+    [[nodiscard]] glm::vec3 GroundLocalPosition(const glm::vec3& local_position
+    ) const
     {
         const glm::dvec3 local_position_d(
-            local_position.x, local_position.y, local_position.z);
+            local_position.x, local_position.y, local_position.z
+        );
         const glm::dvec3 approx_world_position =
             preview_patch_origin_planet_position_m_ +
             LocalDirectionToWorld(
@@ -204,7 +214,9 @@ class PreviewPatchTerrainSampler
                 TangentFrame{
                     preview_patch_frame_east_,
                     preview_patch_frame_north_,
-                    preview_patch_frame_up_});
+                    preview_patch_frame_up_
+                }
+            );
 
         const glm::dvec3 grounded_world_position =
             GroundWorldPosition(approx_world_position);
@@ -214,16 +226,20 @@ class PreviewPatchTerrainSampler
             TangentFrame{
                 preview_patch_frame_east_,
                 preview_patch_frame_north_,
-                preview_patch_frame_up_});
+                preview_patch_frame_up_
+            }
+        );
         return glm::vec3(
             static_cast<float>(grounded_local_position.x),
             static_cast<float>(grounded_local_position.y),
-            static_cast<float>(grounded_local_position.z));
+            static_cast<float>(grounded_local_position.z)
+        );
     }
 
   private:
     [[nodiscard]] static std::string ReadTextFile(
-        const std::filesystem::path& path)
+        const std::filesystem::path& path
+    )
     {
         std::ifstream input(path, std::ios::binary);
         if (!input.is_open())
@@ -237,16 +253,18 @@ class PreviewPatchTerrainSampler
     }
 
     [[nodiscard]] static double ExtractJsonNumber(
-        const std::string& text, const std::string& key)
+        const std::string& text, const std::string& key
+    )
     {
         const std::regex pattern(
-            "\"" + key +
-            "\"\\s*:\\s*([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)");
+            "\"" + key + "\"\\s*:\\s*([-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)"
+        );
         std::smatch match;
         if (!std::regex_search(text, match, pattern))
         {
             throw std::runtime_error(
-                "failed to find numeric key '" + key + "' in terrain metadata");
+                "failed to find numeric key '" + key + "' in terrain metadata"
+            );
         }
 
         return std::stod(match[1].str());
@@ -255,7 +273,8 @@ class PreviewPatchTerrainSampler
     [[nodiscard]] static std::vector<float> ReadRelativeHeights(
         const std::filesystem::path& path,
         std::uint32_t rows,
-        std::uint32_t cols)
+        std::uint32_t cols
+    )
     {
         const std::size_t sample_count =
             static_cast<std::size_t>(rows) * static_cast<std::size_t>(cols);
@@ -269,13 +288,15 @@ class PreviewPatchTerrainSampler
 
         input.read(
             reinterpret_cast<char*>(values.data()),
-            static_cast<std::streamsize>(sample_count * sizeof(float)));
+            static_cast<std::streamsize>(sample_count * sizeof(float))
+        );
         if (!input || static_cast<std::size_t>(input.gcount()) !=
                           sample_count * sizeof(float))
         {
             throw std::runtime_error(
                 "failed to read expected terrain height sample count from " +
-                path.string());
+                path.string()
+            );
         }
 
         return values;
@@ -287,7 +308,8 @@ class PreviewPatchTerrainSampler
     }
 
     [[nodiscard]] double SampleRelativeHeightM(
-        const glm::dvec3& approx_world_position_m) const
+        const glm::dvec3& approx_world_position_m
+    ) const
     {
         const glm::dvec3 surface_up =
             SurfaceUpFromPosition(approx_world_position_m);
@@ -299,7 +321,8 @@ class PreviewPatchTerrainSampler
     }
 
     [[nodiscard]] double SampleRelativeHeightM(
-        double latitude_deg, double longitude_deg) const
+        double latitude_deg, double longitude_deg
+    ) const
     {
         if (!loaded_ || rows_ == 0u || cols_ == 0u)
         {
@@ -323,10 +346,10 @@ class PreviewPatchTerrainSampler
         const double col_t = col - static_cast<double>(col0);
 
         const auto index_of =
-            [this](std::uint32_t sample_row, std::uint32_t sample_col) {
-                return (static_cast<std::size_t>(sample_row) * cols_) +
-                       sample_col;
-            };
+            [this](std::uint32_t sample_row, std::uint32_t sample_col)
+        {
+            return (static_cast<std::size_t>(sample_row) * cols_) + sample_col;
+        };
 
         const float h00 = relative_heights_m_[index_of(row0, col0)];
         const float h10 = relative_heights_m_[index_of(row0, col1)];

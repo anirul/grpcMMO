@@ -13,27 +13,29 @@
 #include "session/v1/session.grpc.pb.h"
 
 ABSL_FLAG(
-    std::string,
-    listen_address,
-    "0.0.0.0:50051",
-    "Game server listen address.");
+    std::string, listen_address, "0.0.0.0:50051", "Game server listen address."
+);
 ABSL_FLAG(
-    std::string, db_path, "data/grpcmmo.sqlite3", "SQLite database path.");
+    std::string, db_path, "data/grpcmmo.sqlite3", "SQLite database path."
+);
 ABSL_FLAG(
     uint64_t,
     snapshot_send_interval_ms,
     100,
-    "Replication interval hint sent to the client.");
+    "Replication interval hint sent to the client."
+);
 ABSL_FLAG(
     uint64_t,
     interpolation_back_time_ms,
     150,
-    "Interpolation back-time hint sent to the client.");
+    "Interpolation back-time hint sent to the client."
+);
 ABSL_FLAG(
     uint64_t,
     heartbeat_interval_ms,
     1000,
-    "Send a replication heartbeat if no motion occurs within this interval.");
+    "Send a replication heartbeat if no motion occurs within this interval."
+);
 
 namespace
 {
@@ -46,7 +48,8 @@ class SessionServiceImpl final
         grpcmmo::game::AuthoritativeWorld* world,
         std::uint64_t snapshot_send_interval_ms,
         std::uint64_t interpolation_back_time_ms,
-        std::uint64_t heartbeat_interval_ms)
+        std::uint64_t heartbeat_interval_ms
+    )
         : storage_(storage), world_(world),
           snapshot_send_interval_ms_(snapshot_send_interval_ms),
           interpolation_back_time_ms_(interpolation_back_time_ms),
@@ -58,7 +61,8 @@ class SessionServiceImpl final
         grpc::ServerContext*,
         grpc::ServerReaderWriter<
             grpcmmo::session::v1::ServerMessage,
-            grpcmmo::session::v1::ClientMessage>* stream) override
+            grpcmmo::session::v1::ClientMessage>* stream
+    ) override
     {
         grpcmmo::session::v1::ClientMessage first_message;
         if (!stream->Read(&first_message))
@@ -66,8 +70,8 @@ class SessionServiceImpl final
             std::cout << "[game] open_session failed: missing begin_session"
                       << std::endl;
             return grpc::Status(
-                grpc::StatusCode::FAILED_PRECONDITION,
-                "begin_session required");
+                grpc::StatusCode::FAILED_PRECONDITION, "begin_session required"
+            );
         }
 
         if (!first_message.has_begin_session())
@@ -75,8 +79,8 @@ class SessionServiceImpl final
             grpcmmo::session::v1::ServerMessage notice_message;
             auto* notice = notice_message.mutable_notice();
             notice->set_code("protocol_error");
-            notice->set_message(
-                "the first client message must be begin_session");
+            notice->set_message("the first client message must be begin_session"
+            );
             notice->set_fatal(true);
             stream->Write(notice_message);
             std::cout
@@ -86,7 +90,8 @@ class SessionServiceImpl final
         }
 
         const auto grant = storage_->FindSessionGrant(
-            first_message.begin_session().session_token());
+            first_message.begin_session().session_token()
+        );
         if (!grant.has_value() ||
             grant->character_id != first_message.begin_session().character_id())
         {
@@ -94,7 +99,8 @@ class SessionServiceImpl final
             auto* notice = notice_message.mutable_notice();
             notice->set_code("invalid_session");
             notice->set_message(
-                "session token was not found or did not match the character");
+                "session token was not found or did not match the character"
+            );
             notice->set_fatal(true);
             stream->Write(notice_message);
             std::cout << "[game] invalid_session character="
@@ -155,7 +161,8 @@ class SessionServiceImpl final
                 const auto batch = world_->ApplyInput(
                     grant->session_id,
                     client_message.input_frame(),
-                    heartbeat_interval_ms_);
+                    heartbeat_interval_ms_
+                );
                 if (batch.has_value())
                 {
                     grpcmmo::session::v1::ServerMessage replication_message;
@@ -230,11 +237,13 @@ int main(int argc, char** argv)
         &world,
         absl::GetFlag(FLAGS_snapshot_send_interval_ms),
         absl::GetFlag(FLAGS_interpolation_back_time_ms),
-        absl::GetFlag(FLAGS_heartbeat_interval_ms));
+        absl::GetFlag(FLAGS_heartbeat_interval_ms)
+    );
 
     grpc::ServerBuilder builder;
     builder.AddListeningPort(
-        absl::GetFlag(FLAGS_listen_address), grpc::InsecureServerCredentials());
+        absl::GetFlag(FLAGS_listen_address), grpc::InsecureServerCredentials()
+    );
     builder.RegisterService(&service);
 
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());

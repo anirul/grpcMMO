@@ -62,8 +62,10 @@ struct BakeResult
 };
 
 [[nodiscard]] RasterMetadata InspectRaster(
-    const std::filesystem::path& input_tiff);
+    const std::filesystem::path& input_tiff
+);
 [[nodiscard]] BakeResult BakeTerrainPatch(const BakeSettings& settings);
 [[nodiscard]] const char* RasterSampleFormatName(
-    RasterSampleFormat sample_format);
+    RasterSampleFormat sample_format
+);
 } // namespace grpcmmo::tools::terrain

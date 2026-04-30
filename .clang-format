@@ -3,7 +3,11 @@ IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 ColumnLimit: 80
-AlignAfterOpenBracket: AlwaysBreak
+AlignAfterOpenBracket: BlockIndent
 BinPackParameters: false
 BinPackArguments: false
 PointerAlignment: Left
+AllowShortLambdasOnASingleLine: None
+BraceWrapping:
+  BeforeLambdaBody: true
+LambdaBodyIndentation: OuterScope

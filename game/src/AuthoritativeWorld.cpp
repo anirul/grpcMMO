@@ -48,33 +48,39 @@ constexpr double kSpawnSpacingMeters = 6.0;
 }
 
 [[nodiscard]] glm::dvec3 LocalVectorToWorldTangent(
-    const glm::dvec3& local_vector, const glm::dvec3& up_unit)
+    const glm::dvec3& local_vector, const glm::dvec3& up_unit
+)
 {
     return ProjectVectorOntoTangent(
-        LocalDirectionToWorld(local_vector, PreviewPatchFrame()), up_unit);
+        LocalDirectionToWorld(local_vector, PreviewPatchFrame()), up_unit
+    );
 }
 
 [[nodiscard]] glm::dvec3 LocalDirectionToWorldTangent(
     const glm::dvec3& local_direction,
     const glm::dvec3& up_unit,
-    const glm::dvec3& fallback)
+    const glm::dvec3& fallback
+)
 {
     return ProjectDirectionOntoTangent(
         LocalDirectionToWorld(local_direction, PreviewPatchFrame()),
         up_unit,
-        fallback);
+        fallback
+    );
 }
 
 template <typename QuaternionT>
 void SetOrientationFromForwardUp(
     QuaternionT* orientation,
     const glm::dvec3& forward_direction,
-    const glm::dvec3& up_direction)
+    const glm::dvec3& up_direction
+)
 {
     const glm::dvec3 up =
         NormalizeOrFallback(up_direction, glm::dvec3(0.0, 1.0, 0.0));
     const glm::dvec3 forward = ProjectDirectionOntoTangent(
-        forward_direction, up, glm::dvec3(1.0, 0.0, 0.0));
+        forward_direction, up, glm::dvec3(1.0, 0.0, 0.0)
+    );
     const glm::dvec3 side =
         NormalizeOrFallback(glm::cross(forward, up), glm::dvec3(0.0, 0.0, 1.0));
     const glm::dvec3 corrected_up =
@@ -91,32 +97,38 @@ void SetOrientationFromForwardUp(
 [[nodiscard]] glm::dvec3 BuildSpawnPosition(
     std::size_t spawn_index,
     double planet_radius_m,
-    const grpcmmo::shared::planet::PreviewPatchTerrainSampler& terrain_sampler)
+    const grpcmmo::shared::planet::PreviewPatchTerrainSampler& terrain_sampler
+)
 {
     const double spawn_offset_m =
         static_cast<double>(spawn_index) * kSpawnSpacingMeters;
     const glm::dvec3 approximate_position =
         grpcmmo::shared::planet::BuildPreviewPatchOriginPlanetPosition(
-            PreviewPatch()) +
+            PreviewPatch()
+        ) +
         (PreviewPatchFrame().east * spawn_offset_m);
     if (terrain_sampler.IsLoaded())
     {
         return terrain_sampler.GroundWorldPosition(
-            approximate_position, planet_radius_m);
+            approximate_position, planet_radius_m
+        );
     }
 
     return ProjectToAltitude(
         approximate_position,
         planet_radius_m,
-        PreviewPatchSurfaceAltitudeM(PreviewPatch()));
+        PreviewPatchSurfaceAltitudeM(PreviewPatch())
+    );
 }
 
 [[nodiscard]] glm::dvec3 BuildSpawnFacingDirection(
-    const glm::dvec3& planet_position_m)
+    const glm::dvec3& planet_position_m
+)
 {
     const glm::dvec3 up = SurfaceUpFromPosition(planet_position_m);
     return ProjectDirectionOntoTangent(
-        PreviewPatchFrame().east, up, glm::dvec3(1.0, 0.0, 0.0));
+        PreviewPatchFrame().east, up, glm::dvec3(1.0, 0.0, 0.0)
+    );
 }
 
 [[nodiscard]] bool NearlyChanged(const glm::dvec3& lhs, const glm::dvec3& rhs)
@@ -125,7 +137,8 @@ void SetOrientationFromForwardUp(
 }
 
 [[nodiscard]] glm::dvec3 ClampLocalStep(
-    const glm::dvec3& requested_step_m, double max_distance_m)
+    const glm::dvec3& requested_step_m, double max_distance_m
+)
 {
     const double requested_distance = glm::length(requested_step_m);
     if (requested_distance <= max_distance_m || requested_distance <= 0.000001)
@@ -144,7 +157,8 @@ AuthoritativeWorld::AuthoritativeWorld(double planet_radius_m)
 }
 
 AuthoritativeWorld::ConnectResult AuthoritativeWorld::ConnectPlayer(
-    const ConnectedPlayer& player)
+    const ConnectedPlayer& player
+)
 {
     std::scoped_lock lock(mutex_);
 
@@ -182,7 +196,8 @@ std::optional<grpcmmo::world::v1::ReplicationBatch> AuthoritativeWorld::
     ApplyInput(
         const std::string& session_id,
         const grpcmmo::session::v1::InputFrame& input_frame,
-        std::uint64_t heartbeat_interval_ms)
+        std::uint64_t heartbeat_interval_ms
+    )
 {
     std::scoped_lock lock(mutex_);
 
@@ -202,14 +217,16 @@ std::optional<grpcmmo::world::v1::ReplicationBatch> AuthoritativeWorld::
     if (player_state.last_client_time_ms != 0 &&
         input_frame.client_time_ms() > player_state.last_client_time_ms)
     {
-        input_step_seconds = static_cast<double>(
-                                 input_frame.client_time_ms() -
-                                 player_state.last_client_time_ms) /
-                             1000.0;
+        input_step_seconds =
+            static_cast<double>(
+                input_frame.client_time_ms() - player_state.last_client_time_ms
+            ) /
+            1000.0;
     }
     player_state.last_client_time_ms = input_frame.client_time_ms();
     input_step_seconds = std::clamp(
-        input_step_seconds, kMinInputStepSeconds, kMaxInputStepSeconds);
+        input_step_seconds, kMinInputStepSeconds, kMaxInputStepSeconds
+    );
 
     const double max_distance_m =
         kMoveSpeedMetersPerSecond * input_step_seconds;
@@ -217,8 +234,10 @@ std::optional<grpcmmo::world::v1::ReplicationBatch> AuthoritativeWorld::
         glm::dvec3(
             move.world_displacement_m().x(),
             move.world_displacement_m().y(),
-            move.world_displacement_m().z()),
-        max_distance_m);
+            move.world_displacement_m().z()
+        ),
+        max_distance_m
+    );
     const double requested_distance = glm::length(requested_local_step);
     const glm::dvec3 current_up =
         SurfaceUpFromPosition(player_state.position_m);
@@ -231,9 +250,11 @@ std::optional<grpcmmo::world::v1::ReplicationBatch> AuthoritativeWorld::
             glm::dvec3(
                 move.facing_direction_unit().x(),
                 move.facing_direction_unit().y(),
-                move.facing_direction_unit().z()),
+                move.facing_direction_unit().z()
+            ),
             current_up,
-            player_state.facing_direction_unit);
+            player_state.facing_direction_unit
+        );
     }
     else if (requested_distance > 0.000001)
     {
@@ -246,22 +267,26 @@ std::optional<grpcmmo::world::v1::ReplicationBatch> AuthoritativeWorld::
     player_state.position_m =
         terrain_sampler_.IsLoaded()
             ? terrain_sampler_.GroundWorldPosition(
-                  moved_position, planet_radius_m_)
+                  moved_position, planet_radius_m_
+              )
             : ProjectToAltitude(
                   moved_position,
                   planet_radius_m_,
-                  PreviewPatchSurfaceAltitudeM(PreviewPatch()));
+                  PreviewPatchSurfaceAltitudeM(PreviewPatch())
+              );
     player_state.facing_direction_unit = ProjectDirectionOntoTangent(
         player_state.facing_direction_unit,
         SurfaceUpFromPosition(player_state.position_m),
-        previous_facing_direction);
+        previous_facing_direction
+    );
     player_state.last_processed_input_sequence = input_frame.input_sequence();
 
     const std::uint64_t server_time_ms = grpcmmo::shared::NowMs();
     const bool changed =
         NearlyChanged(player_state.position_m, previous_position) ||
         NearlyChanged(
-            player_state.facing_direction_unit, previous_facing_direction);
+            player_state.facing_direction_unit, previous_facing_direction
+        );
     const bool heartbeat_due =
         server_time_ms >=
         (player_state.last_sent_time_ms + heartbeat_interval_ms);
@@ -277,7 +302,8 @@ std::optional<grpcmmo::world::v1::ReplicationBatch> AuthoritativeWorld::
         player_state,
         server_time_ms,
         server_tick,
-        player_state.last_processed_input_sequence);
+        player_state.last_processed_input_sequence
+    );
 }
 
 void AuthoritativeWorld::DisconnectPlayer(const std::string& session_id)
@@ -289,23 +315,27 @@ void AuthoritativeWorld::DisconnectPlayer(const std::string& session_id)
 grpcmmo::world::v1::EntityPatch AuthoritativeWorld::MakeEntityPatch(
     const PlayerState& player_state,
     std::uint64_t server_time_ms,
-    std::uint64_t server_tick) const
+    std::uint64_t server_tick
+) const
 {
     grpcmmo::world::v1::EntityPatch entity_patch;
     entity_patch.set_entity_id(player_state.entity_id);
     entity_patch.set_replication_mode(
-        grpcmmo::world::v1::ENTITY_REPLICATION_MODE_FULL);
+        grpcmmo::world::v1::ENTITY_REPLICATION_MODE_FULL
+    );
     entity_patch.set_sample_time_ms(server_time_ms);
     entity_patch.set_sample_tick(server_tick);
     entity_patch.set_interpolation_mode(
-        grpcmmo::world::v1::INTERPOLATION_MODE_VELOCITY);
+        grpcmmo::world::v1::INTERPOLATION_MODE_VELOCITY
+    );
 
     auto* anchor = entity_patch.mutable_surface_anchor();
     anchor->set_planet_id(player_state.planet_id);
     anchor->set_zone_id(player_state.zone_id);
     anchor->set_patch_id(player_state.patch_id);
     anchor->set_altitude_m(
-        AltitudeFromPosition(player_state.position_m, planet_radius_m_));
+        AltitudeFromPosition(player_state.position_m, planet_radius_m_)
+    );
     const glm::dvec3 up = SurfaceUpFromPosition(player_state.position_m);
     anchor->mutable_unit_normal()->set_x(up.x);
     anchor->mutable_unit_normal()->set_y(up.y);
@@ -316,9 +346,8 @@ grpcmmo::world::v1::EntityPatch AuthoritativeWorld::MakeEntityPatch(
     transform->mutable_position_m()->set_y(player_state.position_m.y);
     transform->mutable_position_m()->set_z(player_state.position_m.z);
     SetOrientationFromForwardUp(
-        transform->mutable_orientation(),
-        player_state.facing_direction_unit,
-        up);
+        transform->mutable_orientation(), player_state.facing_direction_unit, up
+    );
     transform->mutable_up_unit()->set_x(up.x);
     transform->mutable_up_unit()->set_y(up.y);
     transform->mutable_up_unit()->set_z(up.z);
@@ -342,7 +371,8 @@ grpcmmo::world::v1::ReplicationBatch AuthoritativeWorld::MakeReplicationBatch(
     const PlayerState& player_state,
     std::uint64_t server_time_ms,
     std::uint64_t server_tick,
-    std::uint64_t last_processed_input_sequence)
+    std::uint64_t last_processed_input_sequence
+)
 {
     grpcmmo::world::v1::ReplicationBatch batch;
     batch.set_snapshot_id(next_snapshot_id_++);

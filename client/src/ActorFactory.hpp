@@ -13,7 +13,8 @@ class ActorFactory
 {
   public:
     [[nodiscard]] std::unique_ptr<PlanetActor> CreatePlanetActor(
-        const std::string& entity_id, const std::string& display_name) const
+        const std::string& entity_id, const std::string& display_name
+    ) const
     {
         auto actor = std::make_unique<PlanetActor>();
         actor->SetEntityId(entity_id);
@@ -22,7 +23,8 @@ class ActorFactory
     }
 
     [[nodiscard]] std::unique_ptr<StaticPropActor> CreateStaticPropActor(
-        const std::string& entity_id, const std::string& display_name) const
+        const std::string& entity_id, const std::string& display_name
+    ) const
     {
         auto actor = std::make_unique<StaticPropActor>();
         actor->SetEntityId(entity_id);
@@ -32,7 +34,8 @@ class ActorFactory
 
     [[nodiscard]] std::unique_ptr<InteractivePropActor>
     CreateInteractivePropActor(
-        const std::string& entity_id, const std::string& display_name) const
+        const std::string& entity_id, const std::string& display_name
+    ) const
     {
         auto actor = std::make_unique<InteractivePropActor>();
         actor->SetEntityId(entity_id);
@@ -41,7 +44,8 @@ class ActorFactory
     }
 
     [[nodiscard]] std::unique_ptr<Actor> CreateReplicatedActor(
-        const grpcmmo::world::v1::EntityPatch& patch) const
+        const grpcmmo::world::v1::EntityPatch& patch
+    ) const
     {
         std::unique_ptr<Actor> actor;
         switch (patch.metadata().kind())

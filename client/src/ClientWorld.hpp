@@ -47,10 +47,10 @@ class ClientWorld
     void Init();
     void End();
 
-    void OnSessionReady(
-        const grpcmmo::session::v1::SessionReady& session_ready);
-    void ApplyReplicationBatch(
-        const grpcmmo::world::v1::ReplicationBatch& batch);
+    void OnSessionReady(const grpcmmo::session::v1::SessionReady& session_ready
+    );
+    void ApplyReplicationBatch(const grpcmmo::world::v1::ReplicationBatch& batch
+    );
     void Tick(float delta_seconds);
 
     [[nodiscard]] bool IsExitRequested() const;
@@ -65,7 +65,8 @@ class ClientWorld
 
     [[nodiscard]] PlayerController::FrameInput BuildFrameInput() const;
     [[nodiscard]] glm::vec3 GroundRenderPosition(
-        const glm::vec3& render_position) const;
+        const glm::vec3& render_position
+    ) const;
     void AdvanceControlledPrediction(const MoveCommand& move_command);
     void SyncControlledPawnRenderState();
     void BootstrapLocalWorld();

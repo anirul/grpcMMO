@@ -6,7 +6,8 @@
 #include "grpcmmo/storage/SqliteStorage.hpp"
 
 ABSL_FLAG(
-    std::string, db_path, "data/grpcmmo.sqlite3", "SQLite database path.");
+    std::string, db_path, "data/grpcmmo.sqlite3", "SQLite database path."
+);
 ABSL_FLAG(std::string, login_name, "", "Login name for the new account.");
 ABSL_FLAG(std::string, password, "", "Password for the new account.");
 ABSL_FLAG(std::string, display_name, "", "Display name for the new account.");
@@ -40,7 +41,8 @@ int main(int argc, char** argv)
 
     std::string error_message;
     const auto account = storage.CreateAccount(
-        login_name, password, display_name, &error_message);
+        login_name, password, display_name, &error_message
+    );
     if (!account.has_value())
     {
         std::cerr << "CreateAccount failed: " << error_message << std::endl;

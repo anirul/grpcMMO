@@ -26,7 +26,8 @@ void RemoveFileIfPresent(const std::filesystem::path& path)
 
 void CopyFileIfChanged(
     const std::filesystem::path& source,
-    const std::filesystem::path& destination)
+    const std::filesystem::path& destination
+)
 {
     std::ifstream in(source, std::ios::binary);
     if (!in.is_open())
@@ -59,7 +60,8 @@ void CopyFileIfChanged(
         throw std::runtime_error("failed to write " + destination.string());
     }
     out.write(
-        source_data.data(), static_cast<std::streamsize>(source_data.size()));
+        source_data.data(), static_cast<std::streamsize>(source_data.size())
+    );
 }
 
 std::string ReadTextFile(const std::filesystem::path& path)
@@ -76,7 +78,8 @@ std::string ReadTextFile(const std::filesystem::path& path)
 }
 
 void WriteTextFileIfChanged(
-    const std::filesystem::path& destination, const std::string& contents)
+    const std::filesystem::path& destination, const std::string& contents
+)
 {
     bool should_write = true;
     std::ifstream existing(destination, std::ios::binary);
@@ -98,11 +101,13 @@ void WriteTextFileIfChanged(
         throw std::runtime_error("failed to write " + destination.string());
     }
     output.write(
-        contents.data(), static_cast<std::streamsize>(contents.size()));
+        contents.data(), static_cast<std::streamsize>(contents.size())
+    );
 }
 
 std::size_t FindJsonSectionLineStart(
-    std::string_view text, std::string_view key)
+    std::string_view text, std::string_view key
+)
 {
     const std::size_t key_start = text.find(key);
     if (key_start == std::string::npos)
@@ -123,7 +128,8 @@ bool ReplaceJsonSection(
     std::string* text,
     std::string_view start_key,
     std::string_view next_key,
-    const std::string& replacement)
+    const std::string& replacement
+)
 {
     const std::size_t start = FindJsonSectionLineStart(*text, start_key);
     if (start == std::string::npos)
@@ -143,7 +149,8 @@ bool ReplaceJsonSection(
 
 void ApplyGroundPbrOverrideIfPresent(
     const std::filesystem::path& preview_gltf_path,
-    const std::filesystem::path& destination_asset_root)
+    const std::filesystem::path& destination_asset_root
+)
 {
     if (!std::filesystem::exists(preview_gltf_path))
     {
@@ -221,17 +228,21 @@ void ApplyGroundPbrOverrideIfPresent(
                                          "  ],\n";
 
     const bool replaced_materials = ReplaceJsonSection(
-        &gltf, "\"materials\": [", "\"samplers\": [", material_section);
+        &gltf, "\"materials\": [", "\"samplers\": [", material_section
+    );
     const bool replaced_images = ReplaceJsonSection(
-        &gltf, "\"images\": [", "\"textures\": [", images_section);
+        &gltf, "\"images\": [", "\"textures\": [", images_section
+    );
     const bool replaced_textures = ReplaceJsonSection(
-        &gltf, "\"textures\": [", "\"buffers\": [", textures_section);
+        &gltf, "\"textures\": [", "\"buffers\": [", textures_section
+    );
 
     if (!replaced_materials || !replaced_images || !replaced_textures)
     {
         throw std::runtime_error(
             "failed to apply ground material override to " +
-            preview_gltf_path.string());
+            preview_gltf_path.string()
+        );
     }
 
     WriteTextFileIfChanged(preview_gltf_path, gltf);
@@ -255,15 +266,16 @@ std::filesystem::path AssetBootstrap::EnsureFrameAssetsAvailable() const
     const std::array<std::filesystem::path, 3> source_directories = {
         source_asset_root / "shader",
         source_asset_root / "cubemap",
-        source_asset_root / "model"};
+        source_asset_root / "model"
+    };
 
     for (const auto& source_directory : source_directories)
     {
         if (!std::filesystem::exists(source_directory))
         {
             throw std::runtime_error(
-                "Frame asset directory not found: " +
-                source_directory.string());
+                "Frame asset directory not found: " + source_directory.string()
+            );
         }
 
         for (const auto& entry :
@@ -284,19 +296,21 @@ std::filesystem::path AssetBootstrap::EnsureFrameAssetsAvailable() const
     {
         const std::filesystem::path terrain_preview_source = NormalizePath(
             std::filesystem::path(grpcmmo::shared::kDataRoot) / "tiles" /
-            "mars" / "patch-000" / "ground_preview.gltf");
+            "mars" / "patch-000" / "ground_preview.gltf"
+        );
         const std::filesystem::path terrain_preview_texture_source =
             NormalizePath(
                 std::filesystem::path(grpcmmo::shared::kDataRoot) / "tiles" /
-                "mars" / "patch-000" / "ground_preview_basecolor.png");
+                "mars" / "patch-000" / "ground_preview_basecolor.png"
+            );
         if (std::filesystem::exists(terrain_preview_source))
         {
             CopyFileIfChanged(terrain_preview_source, preview_gltf_destination);
             if (std::filesystem::exists(terrain_preview_texture_source))
             {
                 CopyFileIfChanged(
-                    terrain_preview_texture_source,
-                    preview_texture_destination);
+                    terrain_preview_texture_source, preview_texture_destination
+                );
             }
             else
             {
@@ -304,25 +318,29 @@ std::filesystem::path AssetBootstrap::EnsureFrameAssetsAvailable() const
             }
             RemoveFileIfPresent(preview_obj_destination);
             ApplyGroundPbrOverrideIfPresent(
-                preview_gltf_destination, destination_asset_root);
+                preview_gltf_destination, destination_asset_root
+            );
         }
         else
         {
             ApplyGroundPbrOverrideIfPresent(
-                preview_gltf_destination, destination_asset_root);
+                preview_gltf_destination, destination_asset_root
+            );
         }
     }
     else
     {
         ApplyGroundPbrOverrideIfPresent(
-            preview_gltf_destination, destination_asset_root);
+            preview_gltf_destination, destination_asset_root
+        );
     }
 
     return destination_asset_root / "shader";
 }
 
 std::filesystem::path AssetBootstrap::WriteGeneratedLevelJson(
-    const frame::proto::Level& level) const
+    const frame::proto::Level& level
+) const
 {
     const std::filesystem::path project_root = ResolveProjectRoot();
     const std::filesystem::path output_path =

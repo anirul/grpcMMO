@@ -26,7 +26,8 @@ class FrameSceneBridge : public Object
   public:
     void Attach(frame::WindowInterface* window);
     void SetViewState(
-        const Pawn* controlled_pawn, const CameraBoon* camera_boon);
+        const Pawn* controlled_pawn, const CameraBoon* camera_boon
+    );
 
     void Init() override;
     void End() override;
@@ -34,34 +35,41 @@ class FrameSceneBridge : public Object
 
     void SetDebugPoseTrace(bool enabled);
     [[nodiscard]] CameraPose BuildFollowCameraPose(
-        const Pawn* controlled_pawn, const CameraBoon& camera_boon) const;
+        const Pawn* controlled_pawn, const CameraBoon& camera_boon
+    ) const;
     [[nodiscard]] frame::proto::Level BuildLevelProto() const;
 
   private:
     static constexpr int kGroundGridRadius = 4;
     static constexpr std::size_t kGroundTileCount = static_cast<std::size_t>(
-        (kGroundGridRadius * 2 + 1) * (kGroundGridRadius * 2 + 1));
+        (kGroundGridRadius * 2 + 1) * (kGroundGridRadius * 2 + 1)
+    );
     static constexpr int kGuideLineHalfCount = 6;
     static constexpr std::size_t kGuideLineCount =
         static_cast<std::size_t>((kGuideLineHalfCount * 2 + 1) * 2);
 
     void CacheHandles(frame::LevelInterface& level);
     [[nodiscard]] glm::vec3 BuildCameraForwardOnGround(
-        const Pawn* controlled_pawn, const CameraBoon& camera_boon) const;
+        const Pawn* controlled_pawn, const CameraBoon& camera_boon
+    ) const;
     [[nodiscard]] glm::vec3 BuildCameraBoonLocalOffset(
-        const CameraBoon& camera_boon) const;
+        const CameraBoon& camera_boon
+    ) const;
     void SetNodeMatrixIfChanged(
         frame::LevelInterface& level,
         frame::EntityId node_id,
         const glm::mat4& matrix,
         glm::mat4* cached_matrix,
-        bool* cached) const;
+        bool* cached
+    ) const;
     void UpdatePawnRoot(
         frame::LevelInterface& level,
         const Pawn* controlled_pawn,
-        const CameraBoon& camera_boon) const;
+        const CameraBoon& camera_boon
+    ) const;
     void UpdateWorldHolders(
-        frame::LevelInterface& level, const Pawn* controlled_pawn) const;
+        frame::LevelInterface& level, const Pawn* controlled_pawn
+    ) const;
 
     frame::WindowInterface* window_ = nullptr;
     const Pawn* controlled_pawn_ = nullptr;

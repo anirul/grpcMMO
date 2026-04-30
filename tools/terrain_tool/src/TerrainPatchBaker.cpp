@@ -71,17 +71,19 @@ struct RasterWindow
         return samples[(local_row * Width()) + local_col];
     }
 
-    [[nodiscard]] double SampleBilinear(
-        double source_col, double source_row) const
+    [[nodiscard]] double SampleBilinear(double source_col, double source_row)
+        const
     {
         source_col = std::clamp(
             source_col,
             static_cast<double>(col_begin),
-            static_cast<double>(col_end));
+            static_cast<double>(col_end)
+        );
         source_row = std::clamp(
             source_row,
             static_cast<double>(row_begin),
-            static_cast<double>(row_end));
+            static_cast<double>(row_end)
+        );
 
         const auto col0 = static_cast<std::uint32_t>(std::floor(source_col));
         const auto row0 = static_cast<std::uint32_t>(std::floor(source_row));
@@ -142,12 +144,14 @@ using UniqueTiffHandle = std::unique_ptr<TIFF, TiffCloser>;
 }
 
 [[nodiscard]] UniqueTiffHandle OpenRaster(
-    const std::filesystem::path& input_tiff)
+    const std::filesystem::path& input_tiff
+)
 {
     if (!std::filesystem::exists(input_tiff))
     {
         throw std::runtime_error(
-            "input TIFF not found: " + input_tiff.string());
+            "input TIFF not found: " + input_tiff.string()
+        );
     }
 
     TIFF* handle = TIFFOpen(input_tiff.string().c_str(), "r");
@@ -159,7 +163,8 @@ using UniqueTiffHandle = std::unique_ptr<TIFF, TiffCloser>;
 }
 
 [[nodiscard]] RasterSampleFormat ToRasterSampleFormat(
-    std::uint16_t sample_format)
+    std::uint16_t sample_format
+)
 {
     switch (sample_format)
     {
@@ -185,9 +190,11 @@ using UniqueTiffHandle = std::unique_ptr<TIFF, TiffCloser>;
     }
 
     TIFFGetFieldDefaulted(
-        handle, TIFFTAG_BITSPERSAMPLE, &metadata.bits_per_sample);
+        handle, TIFFTAG_BITSPERSAMPLE, &metadata.bits_per_sample
+    );
     TIFFGetFieldDefaulted(
-        handle, TIFFTAG_SAMPLESPERPIXEL, &metadata.samples_per_pixel);
+        handle, TIFFTAG_SAMPLESPERPIXEL, &metadata.samples_per_pixel
+    );
 
     std::uint16_t raw_sample_format = SAMPLEFORMAT_UINT;
     TIFFGetFieldDefaulted(handle, TIFFTAG_SAMPLEFORMAT, &raw_sample_format);
@@ -217,7 +224,8 @@ using UniqueTiffHandle = std::unique_ptr<TIFF, TiffCloser>;
 [[nodiscard]] double DecodeSampleValue(
     const std::uint8_t* scanline,
     std::uint32_t column,
-    const RasterMetadata& metadata)
+    const RasterMetadata& metadata
+)
 {
     switch (metadata.sample_format)
     {
@@ -226,16 +234,20 @@ using UniqueTiffHandle = std::unique_ptr<TIFF, TiffCloser>;
         {
         case 8u:
             return static_cast<double>(
-                reinterpret_cast<const std::uint8_t*>(scanline)[column]);
+                reinterpret_cast<const std::uint8_t*>(scanline)[column]
+            );
         case 16u:
             return static_cast<double>(
-                reinterpret_cast<const std::uint16_t*>(scanline)[column]);
+                reinterpret_cast<const std::uint16_t*>(scanline)[column]
+            );
         case 32u:
             return static_cast<double>(
-                reinterpret_cast<const std::uint32_t*>(scanline)[column]);
+                reinterpret_cast<const std::uint32_t*>(scanline)[column]
+            );
         case 64u:
             return static_cast<double>(
-                reinterpret_cast<const std::uint64_t*>(scanline)[column]);
+                reinterpret_cast<const std::uint64_t*>(scanline)[column]
+            );
         default:
             break;
         }
@@ -245,16 +257,20 @@ using UniqueTiffHandle = std::unique_ptr<TIFF, TiffCloser>;
         {
         case 8u:
             return static_cast<double>(
-                reinterpret_cast<const std::int8_t*>(scanline)[column]);
+                reinterpret_cast<const std::int8_t*>(scanline)[column]
+            );
         case 16u:
             return static_cast<double>(
-                reinterpret_cast<const std::int16_t*>(scanline)[column]);
+                reinterpret_cast<const std::int16_t*>(scanline)[column]
+            );
         case 32u:
             return static_cast<double>(
-                reinterpret_cast<const std::int32_t*>(scanline)[column]);
+                reinterpret_cast<const std::int32_t*>(scanline)[column]
+            );
         case 64u:
             return static_cast<double>(
-                reinterpret_cast<const std::int64_t*>(scanline)[column]);
+                reinterpret_cast<const std::int64_t*>(scanline)[column]
+            );
         default:
             break;
         }
@@ -263,8 +279,8 @@ using UniqueTiffHandle = std::unique_ptr<TIFF, TiffCloser>;
         switch (metadata.bits_per_sample)
         {
         case 32u:
-            return static_cast<double>(
-                reinterpret_cast<const float*>(scanline)[column]);
+            return static_cast<double>(reinterpret_cast<const float*>(scanline
+            )[column]);
         case 64u:
             return reinterpret_cast<const double*>(scanline)[column];
         default:
@@ -279,7 +295,8 @@ using UniqueTiffHandle = std::unique_ptr<TIFF, TiffCloser>;
 }
 
 [[nodiscard]] double SourceRowFromLatitude(
-    const RasterMetadata& metadata, double latitude_deg)
+    const RasterMetadata& metadata, double latitude_deg
+)
 {
     const double clamped_latitude = std::clamp(latitude_deg, -90.0, 90.0);
     return ((90.0 - clamped_latitude) / 180.0) *
@@ -287,7 +304,8 @@ using UniqueTiffHandle = std::unique_ptr<TIFF, TiffCloser>;
 }
 
 [[nodiscard]] double SourceColFromLongitude(
-    const RasterMetadata& metadata, double longitude_deg)
+    const RasterMetadata& metadata, double longitude_deg
+)
 {
     const double clamped_longitude = std::clamp(longitude_deg, -180.0, 180.0);
     return ((clamped_longitude + 180.0) / 360.0) *
@@ -298,7 +316,8 @@ using UniqueTiffHandle = std::unique_ptr<TIFF, TiffCloser>;
     const BakeSettings& settings,
     std::uint32_t output_row,
     double min_lat_deg,
-    double max_lat_deg)
+    double max_lat_deg
+)
 {
     if (settings.output_rows <= 1u)
     {
@@ -314,7 +333,8 @@ using UniqueTiffHandle = std::unique_ptr<TIFF, TiffCloser>;
     const BakeSettings& settings,
     std::uint32_t output_col,
     double min_lon_deg,
-    double max_lon_deg)
+    double max_lon_deg
+)
 {
     if (settings.output_cols <= 1u)
     {
@@ -347,7 +367,8 @@ void ValidateBakeSettings(const BakeSettings& settings)
     if (settings.output_rows < 2u || settings.output_cols < 2u)
     {
         throw std::runtime_error(
-            "output_rows and output_cols must both be at least 2");
+            "output_rows and output_cols must both be at least 2"
+        );
     }
     if (!(settings.lat_span_deg > 0.0 && settings.lat_span_deg <= 180.0))
     {
@@ -393,7 +414,8 @@ void ValidateBakeSettings(const BakeSettings& settings)
     double min_lat_deg,
     double max_lat_deg,
     double min_lon_deg,
-    double max_lon_deg)
+    double max_lon_deg
+)
 {
     const double source_row_a = SourceRowFromLatitude(metadata, max_lat_deg);
     const double source_row_b = SourceRowFromLatitude(metadata, min_lat_deg);
@@ -403,19 +425,24 @@ void ValidateBakeSettings(const BakeSettings& settings)
     RasterWindow window;
     window.metadata = metadata;
     window.row_begin = static_cast<std::uint32_t>(
-        std::max(0.0, std::floor(std::min(source_row_a, source_row_b)) - 1.0));
+        std::max(0.0, std::floor(std::min(source_row_a, source_row_b)) - 1.0)
+    );
     window.row_end = static_cast<std::uint32_t>(std::min(
         static_cast<double>(metadata.height - 1u),
-        std::ceil(std::max(source_row_a, source_row_b)) + 1.0));
+        std::ceil(std::max(source_row_a, source_row_b)) + 1.0
+    ));
     window.col_begin = static_cast<std::uint32_t>(
-        std::max(0.0, std::floor(std::min(source_col_a, source_col_b)) - 1.0));
+        std::max(0.0, std::floor(std::min(source_col_a, source_col_b)) - 1.0)
+    );
     window.col_end = static_cast<std::uint32_t>(std::min(
         static_cast<double>(metadata.width - 1u),
-        std::ceil(std::max(source_col_a, source_col_b)) + 1.0));
+        std::ceil(std::max(source_col_a, source_col_b)) + 1.0
+    ));
 
     window.samples.resize(
         static_cast<std::size_t>(window.Width()) *
-        static_cast<std::size_t>(window.Height()));
+        static_cast<std::size_t>(window.Height())
+    );
 
     const auto scanline_size =
         static_cast<std::size_t>(TIFFScanlineSize(handle));
@@ -451,13 +478,15 @@ void ValidateBakeSettings(const BakeSettings& settings)
     return Vec3{
         (lhs.y * rhs.z) - (lhs.z * rhs.y),
         (lhs.z * rhs.x) - (lhs.x * rhs.z),
-        (lhs.x * rhs.y) - (lhs.y * rhs.x)};
+        (lhs.x * rhs.y) - (lhs.y * rhs.x)
+    };
 }
 
 [[nodiscard]] double Length(const Vec3& value)
 {
     return std::sqrt(
-        (value.x * value.x) + (value.y * value.y) + (value.z * value.z));
+        (value.x * value.x) + (value.y * value.y) + (value.z * value.z)
+    );
 }
 
 [[nodiscard]] Vec3 Normalize(const Vec3& value)
@@ -471,7 +500,8 @@ void ValidateBakeSettings(const BakeSettings& settings)
 }
 
 [[nodiscard]] glm::dvec3 DirectionFromLatLonDegrees(
-    double latitude_deg, double longitude_deg)
+    double latitude_deg, double longitude_deg
+)
 {
     const double latitude_radians =
         latitude_deg * (std::numbers::pi_v<double> / 180.0);
@@ -481,7 +511,8 @@ void ValidateBakeSettings(const BakeSettings& settings)
     return glm::dvec3(
         std::cos(longitude_radians) * cos_latitude,
         std::sin(latitude_radians),
-        std::sin(longitude_radians) * cos_latitude);
+        std::sin(longitude_radians) * cos_latitude
+    );
 }
 
 [[nodiscard]] std::vector<Vec3> BuildVertexPositions(
@@ -491,12 +522,14 @@ void ValidateBakeSettings(const BakeSettings& settings)
     double min_lat_deg,
     double max_lat_deg,
     double min_lon_deg,
-    double max_lon_deg)
+    double max_lon_deg
+)
 {
     const double scaled_origin_height_m =
         origin_height_m * settings.height_scale;
     const glm::dvec3 center_direction = DirectionFromLatLonDegrees(
-        settings.center_lat_deg, settings.center_lon_deg);
+        settings.center_lat_deg, settings.center_lon_deg
+    );
     const auto tangent_frame =
         grpcmmo::shared::planet::BuildTangentFrameFromUp(center_direction);
     const glm::dvec3 center_position =
@@ -528,7 +561,8 @@ void ValidateBakeSettings(const BakeSettings& settings)
                 glm::dot(local_offset, tangent_frame.east),
                 glm::dot(local_offset, tangent_frame.up) *
                     settings.obj_vertical_scale,
-                glm::dot(local_offset, tangent_frame.north)};
+                glm::dot(local_offset, tangent_frame.north)
+            };
         }
     }
 
@@ -536,9 +570,11 @@ void ValidateBakeSettings(const BakeSettings& settings)
 }
 
 [[nodiscard]] std::vector<Vec3> BuildVertexNormals(
-    const std::vector<Vec3>& positions, std::uint32_t rows, std::uint32_t cols)
+    const std::vector<Vec3>& positions, std::uint32_t rows, std::uint32_t cols
+)
 {
-    const auto index_of = [cols](std::uint32_t row, std::uint32_t col) {
+    const auto index_of = [cols](std::uint32_t row, std::uint32_t col)
+    {
         return static_cast<std::size_t>(row) * cols + col;
     };
 
@@ -572,7 +608,8 @@ void ValidateBakeSettings(const BakeSettings& settings)
 }
 
 [[nodiscard]] std::vector<Vec2> BuildVertexTexcoords(
-    std::uint32_t rows, std::uint32_t cols)
+    std::uint32_t rows, std::uint32_t cols
+)
 {
     std::vector<Vec2> texcoords(static_cast<std::size_t>(rows) * cols);
     for (std::uint32_t row = 0; row < rows; ++row)
@@ -587,24 +624,29 @@ void ValidateBakeSettings(const BakeSettings& settings)
                                        : 0.0;
             texcoords[static_cast<std::size_t>(row) * cols + col] = Vec2{
                 u * kPreviewTextureRepeatCount,
-                (1.0 - v) * kPreviewTextureRepeatCount};
+                (1.0 - v) * kPreviewTextureRepeatCount
+            };
         }
     }
     return texcoords;
 }
 
 [[nodiscard]] std::vector<std::uint32_t> BuildTriangleIndices(
-    std::uint32_t rows, std::uint32_t cols)
+    std::uint32_t rows, std::uint32_t cols
+)
 {
-    const auto index_of = [cols](std::uint32_t row, std::uint32_t col) {
+    const auto index_of = [cols](std::uint32_t row, std::uint32_t col)
+    {
         return static_cast<std::uint32_t>(
-            static_cast<std::size_t>(row) * cols + col);
+            static_cast<std::size_t>(row) * cols + col
+        );
     };
 
     std::vector<std::uint32_t> indices;
     indices.reserve(
         static_cast<std::size_t>(rows - 1u) *
-        static_cast<std::size_t>(cols - 1u) * 6u);
+        static_cast<std::size_t>(cols - 1u) * 6u
+    );
     for (std::uint32_t row = 0; row + 1u < rows; ++row)
     {
         for (std::uint32_t col = 0; col + 1u < cols; ++col)
@@ -626,7 +668,8 @@ void ValidateBakeSettings(const BakeSettings& settings)
 }
 
 void AppendAligned(
-    std::vector<std::uint8_t>* buffer, const void* data, std::size_t byte_count)
+    std::vector<std::uint8_t>* buffer, const void* data, std::size_t byte_count
+)
 {
     const auto* bytes = reinterpret_cast<const std::uint8_t*>(data);
     buffer->insert(buffer->end(), bytes, bytes + byte_count);
@@ -638,7 +681,8 @@ void AppendAligned(
 
 template <typename T>
 void AppendArray(
-    std::vector<std::uint8_t>* buffer, const std::vector<T>& values)
+    std::vector<std::uint8_t>* buffer, const std::vector<T>& values
+)
 {
     if (values.empty())
     {
@@ -667,10 +711,11 @@ void AppendArray(
         encoded.push_back(
             (index + 1u) < bytes.size()
                 ? kBase64Alphabet[(triple >> 6u) & 0x3Fu]
-                : '=');
+                : '='
+        );
         encoded.push_back(
-            (index + 2u) < bytes.size() ? kBase64Alphabet[triple & 0x3Fu]
-                                        : '=');
+            (index + 2u) < bytes.size() ? kBase64Alphabet[triple & 0x3Fu] : '='
+        );
     }
 
     return encoded;
@@ -680,8 +725,10 @@ void WritePreviewTexture(const std::filesystem::path& output_path)
 {
     std::vector<std::uint8_t> pixels(
         static_cast<std::size_t>(
-            kPreviewTextureSizePx * kPreviewTextureSizePx * 4),
-        255u);
+            kPreviewTextureSizePx * kPreviewTextureSizePx * 4
+        ),
+        255u
+    );
 
     constexpr int kMicroCellSize = 8;
     constexpr int kMinorCellSize = 32;
@@ -749,28 +796,32 @@ void WritePreviewTexture(const std::filesystem::path& output_path)
             kPreviewTextureSizePx,
             4,
             pixels.data(),
-            kPreviewTextureSizePx * 4) == 0)
+            kPreviewTextureSizePx * 4
+        ) == 0)
     {
         throw std::runtime_error(
-            "failed to write preview texture: " + output_path.string());
+            "failed to write preview texture: " + output_path.string()
+        );
     }
 }
 
 void WriteHeightFile(
     const std::filesystem::path& output_path,
-    const std::vector<float>& relative_heights_m)
+    const std::vector<float>& relative_heights_m
+)
 {
     std::ofstream output(output_path, std::ios::binary | std::ios::trunc);
     if (!output.is_open())
     {
         throw std::runtime_error(
-            "failed to write height file: " + output_path.string());
+            "failed to write height file: " + output_path.string()
+        );
     }
 
     output.write(
         reinterpret_cast<const char*>(relative_heights_m.data()),
-        static_cast<std::streamsize>(
-            relative_heights_m.size() * sizeof(float)));
+        static_cast<std::streamsize>(relative_heights_m.size() * sizeof(float))
+    );
 }
 
 void WritePreviewGltf(
@@ -781,7 +832,8 @@ void WritePreviewGltf(
     double min_lat_deg,
     double max_lat_deg,
     double min_lon_deg,
-    double max_lon_deg)
+    double max_lon_deg
+)
 {
     const auto positions = BuildVertexPositions(
         settings,
@@ -790,9 +842,11 @@ void WritePreviewGltf(
         min_lat_deg,
         max_lat_deg,
         min_lon_deg,
-        max_lon_deg);
+        max_lon_deg
+    );
     const auto normals = BuildVertexNormals(
-        positions, settings.output_rows, settings.output_cols);
+        positions, settings.output_rows, settings.output_cols
+    );
     const auto texcoords =
         BuildVertexTexcoords(settings.output_rows, settings.output_cols);
     const auto indices =
@@ -802,7 +856,8 @@ void WritePreviewGltf(
     if (!output.is_open())
     {
         throw std::runtime_error(
-            "failed to write preview glTF: " + output_path.string());
+            "failed to write preview glTF: " + output_path.string()
+        );
     }
 
     std::vector<float> position_floats;
@@ -815,11 +870,13 @@ void WritePreviewGltf(
     std::array<float, 3> min_position = {
         std::numeric_limits<float>::max(),
         std::numeric_limits<float>::max(),
-        std::numeric_limits<float>::max()};
+        std::numeric_limits<float>::max()
+    };
     std::array<float, 3> max_position = {
         std::numeric_limits<float>::lowest(),
         std::numeric_limits<float>::lowest(),
-        std::numeric_limits<float>::lowest()};
+        std::numeric_limits<float>::lowest()
+    };
 
     for (const auto& position : positions)
     {
@@ -853,7 +910,8 @@ void WritePreviewGltf(
         (indices.size() * sizeof(std::uint32_t)) +
         (position_floats.size() * sizeof(float)) +
         (normal_floats.size() * sizeof(float)) +
-        (texcoord_floats.size() * sizeof(float)));
+        (texcoord_floats.size() * sizeof(float))
+    );
 
     const std::size_t indices_offset = binary_blob.size();
     AppendArray(&binary_blob, indices);
@@ -1012,13 +1070,15 @@ void WritePreviewGltf(
 void WriteMetadata(
     const std::filesystem::path& output_path,
     const BakeSettings& settings,
-    const BakeResult& result)
+    const BakeResult& result
+)
 {
     std::ofstream output(output_path, std::ios::trunc);
     if (!output.is_open())
     {
         throw std::runtime_error(
-            "failed to write patch metadata: " + output_path.string());
+            "failed to write patch metadata: " + output_path.string()
+        );
     }
 
     output << std::fixed << std::setprecision(6);
@@ -1030,11 +1090,13 @@ void WriteMetadata(
            << "\",\n";
     output << "  \"source_tiff\": \""
            << EscapeJsonString(
-                  std::filesystem::absolute(settings.input_tiff).string())
+                  std::filesystem::absolute(settings.input_tiff).string()
+              )
            << "\",\n";
     output << "  \"output_dir\": \""
            << EscapeJsonString(
-                  std::filesystem::absolute(settings.output_dir).string())
+                  std::filesystem::absolute(settings.output_dir).string()
+              )
            << "\",\n";
     output << "  \"center_lat_deg\": " << settings.center_lat_deg << ",\n";
     output << "  \"center_lon_deg\": " << settings.center_lon_deg << ",\n";
@@ -1106,11 +1168,13 @@ BakeResult BakeTerrainPatch(const BakeSettings& settings)
         min_lat_deg,
         max_lat_deg,
         min_lon_deg,
-        max_lon_deg);
+        max_lon_deg
+    );
 
     const double origin_height_m = window.SampleBilinear(
         SourceColFromLongitude(metadata, settings.center_lon_deg),
-        SourceRowFromLatitude(metadata, settings.center_lat_deg));
+        SourceRowFromLatitude(metadata, settings.center_lat_deg)
+    );
 
     BakeResult result;
     result.source_metadata = metadata;
@@ -1120,7 +1184,8 @@ BakeResult BakeTerrainPatch(const BakeSettings& settings)
     result.max_lon_deg = max_lon_deg;
     result.origin_height_m = origin_height_m;
     result.relative_heights_m.resize(
-        static_cast<std::size_t>(settings.output_rows) * settings.output_cols);
+        static_cast<std::size_t>(settings.output_rows) * settings.output_cols
+    );
 
     result.min_relative_height_m = std::numeric_limits<float>::max();
     result.max_relative_height_m = std::numeric_limits<float>::lowest();
@@ -1177,7 +1242,8 @@ BakeResult BakeTerrainPatch(const BakeSettings& settings)
         min_lat_deg,
         max_lat_deg,
         min_lon_deg,
-        max_lon_deg);
+        max_lon_deg
+    );
     WriteMetadata(result.metadata_file, settings, result);
     return result;
 }

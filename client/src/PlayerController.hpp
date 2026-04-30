@@ -33,7 +33,8 @@ class PlayerController : public Controller, public frame::InputInterface
     [[nodiscard]] FrameInput ConsumeFrameInput() const;
     void DriveCamera(const FrameInput& frame_input);
     [[nodiscard]] MoveCommand DrivePawn(
-        const FrameInput& frame_input, float delta_seconds);
+        const FrameInput& frame_input, float delta_seconds
+    );
     [[nodiscard]] glm::vec3 GetLookFacingDirection() const;
     [[nodiscard]] const CameraBoon& GetCameraBoon() const;
 

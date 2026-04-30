@@ -33,12 +33,14 @@ class GrpcSessionClient
     ~GrpcSessionClient();
 
     bool Connect(
-        const ClientConnectionConfig& config, std::string* error_message);
+        const ClientConnectionConfig& config, std::string* error_message
+    );
     bool SendMove(const MoveCommand& move_command);
     bool SendPing();
     void PollMessages(
         const std::function<void(const grpcmmo::session::v1::ServerMessage&)>&
-            on_message);
+            on_message
+    );
     grpc::Status Shutdown();
     bool IsOpen() const;
 
@@ -47,12 +49,14 @@ class GrpcSessionClient
         const ClientConnectionConfig& config,
         const grpcmmo::auth::v1::LoginResponse& login_response,
         grpcmmo::auth::v1::CharacterSummary* character,
-        std::string* error_message);
+        std::string* error_message
+    );
     bool OpenSessionStream(
         const ClientConnectionConfig& config,
         const grpcmmo::auth::v1::CharacterSummary& character,
         const grpcmmo::auth::v1::CreateSessionGrantResponse& grant_response,
-        std::string* error_message);
+        std::string* error_message
+    );
     void StartReader();
     void StartWriter();
     bool EnqueueMessage(grpcmmo::session::v1::ClientMessage&& message);

@@ -33,58 +33,64 @@ ABSL_FLAG(
     std::string,
     input_tiff,
     kDefaultInputTiff,
-    "Source single-band Mars TIFF to inspect or bake.");
+    "Source single-band Mars TIFF to inspect or bake."
+);
 ABSL_FLAG(
     std::string,
     output_dir,
     kDefaultOutputDir,
-    "Directory for baked height data, patch metadata, and preview glTF.");
+    "Directory for baked height data, patch metadata, and preview glTF."
+);
 ABSL_FLAG(
     std::string,
     planet_id,
     "mars",
-    "Planet identifier written into patch metadata.");
+    "Planet identifier written into patch metadata."
+);
 ABSL_FLAG(
     std::string,
     patch_id,
     "patch-000",
-    "Patch identifier written into patch metadata.");
+    "Patch identifier written into patch metadata."
+);
 ABSL_FLAG(
-    double, center_lat_deg, -14.0, "Center latitude for the baked patch.");
+    double, center_lat_deg, -14.0, "Center latitude for the baked patch."
+);
 ABSL_FLAG(
-    double, center_lon_deg, -65.0, "Center longitude for the baked patch.");
+    double, center_lon_deg, -65.0, "Center longitude for the baked patch."
+);
 ABSL_FLAG(
-    double,
-    lat_span_deg,
-    10.0,
-    "Latitude span in degrees for the baked patch.");
+    double, lat_span_deg, 10.0, "Latitude span in degrees for the baked patch."
+);
 ABSL_FLAG(
-    double,
-    lon_span_deg,
-    10.0,
-    "Longitude span in degrees for the baked patch.");
+    double, lon_span_deg, 10.0, "Longitude span in degrees for the baked patch."
+);
 ABSL_FLAG(std::uint32_t, output_rows, 65, "Output grid row count.");
 ABSL_FLAG(std::uint32_t, output_cols, 65, "Output grid column count.");
 ABSL_FLAG(
     double,
     planet_radius_m,
     grpcmmo::shared::planet::kMarsRadiusAtScale1To200M,
-    "Planet radius used for preview mesh coordinates.");
+    "Planet radius used for preview mesh coordinates."
+);
 ABSL_FLAG(
     double,
     height_scale,
     1.0 / grpcmmo::shared::planet::kMarsScaleRatio1To200,
-    "Scale applied to MOLA heights before building the preview mesh.");
+    "Scale applied to MOLA heights before building the preview mesh."
+);
 ABSL_FLAG(
     double,
     obj_vertical_scale,
     1.0,
-    "Vertical scale multiplier applied to preview glTF heights.");
+    "Vertical scale multiplier applied to preview glTF heights."
+);
 
 int main(int argc, char** argv)
 {
     absl::SetProgramUsageMessage(
-        "Inspect a Mars terrain TIFF or bake a local patch into grpcMMO-data.");
+        "Inspect a Mars terrain TIFF or bake a local patch into grpcMMO-data."
+    );
     absl::ParseCommandLine(argc, argv);
 
     try
@@ -107,7 +113,8 @@ int main(int argc, char** argv)
                       << std::endl;
             std::cout << "  sample_format: "
                       << grpcmmo::tools::terrain::RasterSampleFormatName(
-                             metadata.sample_format)
+                             metadata.sample_format
+                         )
                       << std::endl;
             return 0;
         }
