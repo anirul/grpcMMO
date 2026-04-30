@@ -8,7 +8,7 @@ namespace grpcmmo::client
 {
 class WorldActor : public Actor
 {
-public:
+  public:
     [[nodiscard]] const char* GetActorClassName() const override
     {
         return "WorldActor";
@@ -17,7 +17,7 @@ public:
 
 class PlanetActor final : public WorldActor
 {
-public:
+  public:
     void SetPlanetId(std::string planet_id)
     {
         planet_id_ = std::move(planet_id);
@@ -53,7 +53,7 @@ public:
         return "PlanetActor";
     }
 
-private:
+  private:
     std::string planet_id_ = "planet-dev";
     std::string zone_id_ = "zone-dev";
     std::string patch_id_ = "patch-000";
@@ -61,7 +61,7 @@ private:
 
 class StaticPropActor final : public WorldActor
 {
-public:
+  public:
     void SetArchetypeId(std::string archetype_id)
     {
         archetype_id_ = std::move(archetype_id);
@@ -77,13 +77,13 @@ public:
         return "StaticPropActor";
     }
 
-private:
+  private:
     std::string archetype_id_ = "static_prop";
 };
 
 class InteractivePropActor final : public WorldActor
 {
-public:
+  public:
     void SetArchetypeId(std::string archetype_id)
     {
         archetype_id_ = std::move(archetype_id);
@@ -109,7 +109,7 @@ public:
         return "InteractivePropActor";
     }
 
-private:
+  private:
     std::string archetype_id_ = "interactive_prop";
     std::string animation_state_ = "idle";
 };

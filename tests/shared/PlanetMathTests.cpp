@@ -27,7 +27,8 @@ TEST(PlanetMathTests, ProjectToAltitudePreservesRequestedRadius)
 TEST(PlanetMathTests, HorizonDistancesGrowWithAltitude)
 {
     const HorizonDistances low = ComputeHorizonDistances(kMarsMeanRadiusM, 2.0);
-    const HorizonDistances high = ComputeHorizonDistances(kMarsMeanRadiusM, 100.0);
+    const HorizonDistances high =
+        ComputeHorizonDistances(kMarsMeanRadiusM, 100.0);
 
     EXPECT_GT(low.line_of_sight_m, 3000.0);
     EXPECT_GT(low.surface_arc_m, 3000.0);
@@ -38,16 +39,13 @@ TEST(PlanetMathTests, HorizonDistancesGrowWithAltitude)
 TEST(PlanetMathTests, MarsScaleOneToTwoHundredMatchesReferenceRadius)
 {
     EXPECT_NEAR(kMarsRadiusAtScale1To200M, 16980.95, 1e-9);
-    EXPECT_NEAR(ScaledRadiusMeters(kMarsMolaReferenceRadiusM, 200.0), 16980.95, 1e-9);
+    EXPECT_NEAR(
+        ScaledRadiusMeters(kMarsMolaReferenceRadiusM, 200.0), 16980.95, 1e-9);
 }
 
 TEST(PlanetMathTests, CubeSphereChildrenSplitTileIntoQuadrants)
 {
-    const CubeSphereTileAddress root{
-        CubeSphereFace::kPositiveY,
-        0u,
-        0u,
-        0u};
+    const CubeSphereTileAddress root{CubeSphereFace::kPositiveY, 0u, 0u, 0u};
     ASSERT_TRUE(root.IsValid());
 
     const auto children = root.Children();

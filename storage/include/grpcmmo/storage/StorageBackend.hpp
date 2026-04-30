@@ -19,11 +19,10 @@ struct BackendConfig
 
 class StorageBackend
 {
-public:
+  public:
     virtual ~StorageBackend() = default;
 
     virtual BackendKind Kind() const = 0;
     virtual std::string Describe() const = 0;
 };
 } // namespace grpcmmo::storage
-

@@ -24,9 +24,10 @@ namespace
 {
 constexpr float kPositionTolerance = 0.0001f;
 
-void ExpectVec3Near(const glm::vec3& actual,
-                    const glm::vec3& expected,
-                    float tolerance = kPositionTolerance)
+void ExpectVec3Near(
+    const glm::vec3& actual,
+    const glm::vec3& expected,
+    float tolerance = kPositionTolerance)
 {
     EXPECT_NEAR(actual.x, expected.x, tolerance);
     EXPECT_NEAR(actual.y, expected.y, tolerance);
@@ -100,30 +101,21 @@ TEST(ActorFactoryTest, CreatesTypedReplicatedActorsFromPatchMetadata)
 {
     ActorFactory factory;
 
-    auto controlled_player = factory.CreateReplicatedActor(
-        MakeEntityPatch(grpcmmo::world::v1::ENTITY_KIND_PLAYER,
-                        true,
-                        "player-1",
-                        "Player"));
+    auto controlled_player = factory.CreateReplicatedActor(MakeEntityPatch(
+        grpcmmo::world::v1::ENTITY_KIND_PLAYER, true, "player-1", "Player"));
     ASSERT_NE(controlled_player, nullptr);
     EXPECT_NE(dynamic_cast<PlayerCharacter*>(controlled_player.get()), nullptr);
     EXPECT_TRUE(controlled_player->IsReplicated());
     EXPECT_EQ(controlled_player->GetEntityId(), "player-1");
     EXPECT_EQ(controlled_player->GetDisplayName(), "Player");
 
-    auto npc = factory.CreateReplicatedActor(
-        MakeEntityPatch(grpcmmo::world::v1::ENTITY_KIND_NPC,
-                        false,
-                        "npc-1",
-                        "Npc"));
+    auto npc = factory.CreateReplicatedActor(MakeEntityPatch(
+        grpcmmo::world::v1::ENTITY_KIND_NPC, false, "npc-1", "Npc"));
     ASSERT_NE(npc, nullptr);
     EXPECT_NE(dynamic_cast<NpcCharacter*>(npc.get()), nullptr);
 
-    auto interactive = factory.CreateReplicatedActor(
-        MakeEntityPatch(grpcmmo::world::v1::ENTITY_KIND_INTERACTIVE,
-                        false,
-                        "door-1",
-                        "Door"));
+    auto interactive = factory.CreateReplicatedActor(MakeEntityPatch(
+        grpcmmo::world::v1::ENTITY_KIND_INTERACTIVE, false, "door-1", "Door"));
     ASSERT_NE(interactive, nullptr);
     EXPECT_NE(dynamic_cast<InteractivePropActor*>(interactive.get()), nullptr);
 }
@@ -171,13 +163,15 @@ TEST(PlayerControllerTest, NormalizesDiagonalMovementAndClampsMovementStep)
     ASSERT_TRUE(controller.KeyPressed('d', 0.0));
     controller.Tick(1.0f / 60.0f);
 
-    const PlayerController::FrameInput frame_input = controller.ConsumeFrameInput();
+    const PlayerController::FrameInput frame_input =
+        controller.ConsumeFrameInput();
     const glm::vec2 movement(frame_input.move_forward, frame_input.move_right);
     EXPECT_NEAR(glm::length(movement), 1.0f, 0.0001f);
 
     const MoveCommand move_command = controller.DrivePawn(frame_input, 1.0f);
-    const glm::dvec2 displacement(move_command.world_displacement_m.x,
-                                  move_command.world_displacement_m.z);
+    const glm::dvec2 displacement(
+        move_command.world_displacement_m.x,
+        move_command.world_displacement_m.z);
     EXPECT_NEAR(glm::length(displacement), 0.2f, 0.0001f);
 
     controller.End();
@@ -189,21 +183,24 @@ TEST(PlayerControllerTest, MouseOrbitUsesDragSignsOnlyWhileOrbitButtonIsHeld)
     PlayerController controller;
     controller.Init();
 
-    ASSERT_TRUE(controller.MouseMoved(glm::vec2(0.0f), glm::vec2(12.0f, 6.0f), 0.0));
+    ASSERT_TRUE(
+        controller.MouseMoved(glm::vec2(0.0f), glm::vec2(12.0f, 6.0f), 0.0));
     controller.Tick(1.0f / 60.0f);
     PlayerController::FrameInput frame_input = controller.ConsumeFrameInput();
     EXPECT_FLOAT_EQ(frame_input.look_yaw_delta_radians, 0.0f);
     EXPECT_FLOAT_EQ(frame_input.look_pitch_delta_radians, 0.0f);
 
     ASSERT_TRUE(controller.MousePressed(19, 0.0));
-    ASSERT_TRUE(controller.MouseMoved(glm::vec2(0.0f), glm::vec2(10.0f, 8.0f), 0.0));
+    ASSERT_TRUE(
+        controller.MouseMoved(glm::vec2(0.0f), glm::vec2(10.0f, 8.0f), 0.0));
     controller.Tick(1.0f / 60.0f);
     frame_input = controller.ConsumeFrameInput();
     EXPECT_GT(frame_input.look_yaw_delta_radians, 0.0f);
     EXPECT_GT(frame_input.look_pitch_delta_radians, 0.0f);
 
     ASSERT_TRUE(controller.MouseReleased(19, 0.0));
-    ASSERT_TRUE(controller.MouseMoved(glm::vec2(0.0f), glm::vec2(10.0f, 8.0f), 0.0));
+    ASSERT_TRUE(
+        controller.MouseMoved(glm::vec2(0.0f), glm::vec2(10.0f, 8.0f), 0.0));
     controller.Tick(1.0f / 60.0f);
     frame_input = controller.ConsumeFrameInput();
     EXPECT_FLOAT_EQ(frame_input.look_yaw_delta_radians, 0.0f);
@@ -261,14 +258,17 @@ TEST(PawnTest, UncontrolledReplicationSnapsAndIgnoresLocalMove)
     pawn.End();
 }
 
-TEST(PawnTest, ControlledPawnAppliesLocalFacingAndKeepsPredictionBeforeIdleCorrection)
+TEST(
+    PawnTest,
+    ControlledPawnAppliesLocalFacingAndKeepsPredictionBeforeIdleCorrection)
 {
     Pawn pawn;
     pawn.Init();
 
     pawn.ApplyReplication(MakeControlledSnapshot());
     pawn.SetLocalFacingDirection(glm::vec3(0.0f, 0.0f, 1.0f));
-    ExpectVec3Near(pawn.GetRenderFacingDirection(), glm::vec3(0.0f, 0.0f, 1.0f));
+    ExpectVec3Near(
+        pawn.GetRenderFacingDirection(), glm::vec3(0.0f, 0.0f, 1.0f));
     EXPECT_NEAR(pawn.GetRenderYawRadians(), glm::half_pi<float>(), 0.0001f);
 
     MoveCommand move_command;
@@ -289,13 +289,15 @@ TEST(TerrainPatchSamplerTest, GroundsPreviewPatchCenterToSurface)
 {
     if (!grpcmmo::shared::kHaveDataRepo)
     {
-        GTEST_SKIP() << "grpcMMO-data repo is not configured for this workspace";
+        GTEST_SKIP()
+            << "grpcMMO-data repo is not configured for this workspace";
     }
 
     TerrainPatchSampler sampler;
     ASSERT_TRUE(sampler.LoadPreviewPatch());
 
-    const glm::vec3 grounded = sampler.GroundLocalPosition(glm::vec3(0.0f, 12.0f, 0.0f));
+    const glm::vec3 grounded =
+        sampler.GroundLocalPosition(glm::vec3(0.0f, 12.0f, 0.0f));
     ExpectVec3Near(grounded, glm::vec3(0.0f, 0.0f, 0.0f), 0.0005f);
 }
 
@@ -313,7 +315,9 @@ TEST(FrameSceneBridgeTest, BuildFollowCameraPoseTargetsControlledPawn)
     pawn.ApplyReplication(snapshot);
 
     const CameraPose pose = bridge.BuildFollowCameraPose(&pawn, camera_boon);
-    ExpectVec3Near(pose.target, glm::vec3(10.0f, camera_boon.GetFocusHeightMeters(), 20.0f));
+    ExpectVec3Near(
+        pose.target,
+        glm::vec3(10.0f, camera_boon.GetFocusHeightMeters(), 20.0f));
     EXPECT_LT(pose.position.x, pose.target.x);
     EXPECT_GT(pose.position.y, pose.target.y);
     ExpectVec3Near(pose.up, glm::vec3(0.0f, 1.0f, 0.0f));

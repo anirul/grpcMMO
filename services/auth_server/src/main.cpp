@@ -12,48 +12,62 @@
 #include "grpcmmo/shared/Time.hpp"
 #include "grpcmmo/storage/SqliteStorage.hpp"
 
-ABSL_FLAG(std::string, listen_address, "0.0.0.0:50050", "Auth server listen address.");
-ABSL_FLAG(std::string, db_path, "data/grpcmmo.sqlite3", "SQLite database path.");
+ABSL_FLAG(
+    std::string,
+    listen_address,
+    "0.0.0.0:50050",
+    "Auth server listen address.");
+ABSL_FLAG(
+    std::string, db_path, "data/grpcmmo.sqlite3", "SQLite database path.");
 ABSL_FLAG(std::string, realm_id, "realm-dev", "Realm identifier.");
 ABSL_FLAG(std::string, realm_name, "Development Realm", "Realm display name.");
-ABSL_FLAG(std::string, game_host, "127.0.0.1", "Game server host advertised by auth.");
+ABSL_FLAG(
+    std::string,
+    game_host,
+    "127.0.0.1",
+    "Game server host advertised by auth.");
 ABSL_FLAG(int, game_port, 50051, "Game server port advertised by auth.");
 
 namespace
 {
 class AuthServiceImpl final : public grpcmmo::auth::v1::AuthService::Service
 {
-public:
-    AuthServiceImpl(grpcmmo::storage::SqliteStorage* storage, std::string realm_id,
-                    std::string realm_name, std::string game_host, std::uint32_t game_port)
-        : storage_(storage),
-          realm_id_(std::move(realm_id)),
-          realm_name_(std::move(realm_name)),
-          game_host_(std::move(game_host)),
+  public:
+    AuthServiceImpl(
+        grpcmmo::storage::SqliteStorage* storage,
+        std::string realm_id,
+        std::string realm_name,
+        std::string game_host,
+        std::uint32_t game_port)
+        : storage_(storage), realm_id_(std::move(realm_id)),
+          realm_name_(std::move(realm_name)), game_host_(std::move(game_host)),
           game_port_(game_port)
     {
     }
 
-    grpc::Status Login(grpc::ServerContext*,
-                       const grpcmmo::auth::v1::LoginRequest* request,
-                       grpcmmo::auth::v1::LoginResponse* response) override
+    grpc::Status Login(
+        grpc::ServerContext*,
+        const grpcmmo::auth::v1::LoginRequest* request,
+        grpcmmo::auth::v1::LoginResponse* response) override
     {
-        const auto account = storage_->Login(request->login_name(), request->password());
+        const auto account =
+            storage_->Login(request->login_name(), request->password());
         if (!account.has_value())
         {
-            std::cout << "[auth] login failed for '" << request->login_name() << "'"
-                      << std::endl;
-            return grpc::Status(grpc::StatusCode::UNAUTHENTICATED,
-                                "invalid login credentials");
+            std::cout << "[auth] login failed for '" << request->login_name()
+                      << "'" << std::endl;
+            return grpc::Status(
+                grpc::StatusCode::UNAUTHENTICATED, "invalid login credentials");
         }
 
         auto* account_summary = response->mutable_account();
         account_summary->set_account_id(account->account_id);
         account_summary->set_display_name(account->display_name);
         response->set_account_access_token(
-            grpcmmo::storage::SqliteStorage::MakeAccountAccessToken(account->account_id));
-        response->set_expires_at_ms(grpcmmo::shared::NowMs() +
-                                    (24ULL * 60ULL * 60ULL * 1000ULL));
+            grpcmmo::storage::SqliteStorage::MakeAccountAccessToken(
+                account->account_id));
+        response->set_expires_at_ms(
+            grpcmmo::shared::NowMs() + (24ULL * 60ULL * 60ULL * 1000ULL));
 
         auto* realm = response->add_realms();
         realm->set_realm_id(realm_id_);
@@ -62,16 +76,18 @@ public:
         realm->set_port(game_port_);
         realm->set_tls_required(false);
         std::cout << "[auth] login ok account=" << account->account_id
-                  << " login_name='" << request->login_name() << "'" << std::endl;
+                  << " login_name='" << request->login_name() << "'"
+                  << std::endl;
         return grpc::Status::OK;
     }
 
-    grpc::Status ListCharacters(grpc::ServerContext*,
-                                const grpcmmo::auth::v1::ListCharactersRequest* request,
-                                grpcmmo::auth::v1::ListCharactersResponse* response) override
+    grpc::Status ListCharacters(
+        grpc::ServerContext*,
+        const grpcmmo::auth::v1::ListCharactersRequest* request,
+        grpcmmo::auth::v1::ListCharactersResponse* response) override
     {
-        const auto characters =
-            storage_->ListCharacters(request->account_access_token(), request->realm_id());
+        const auto characters = storage_->ListCharacters(
+            request->account_access_token(), request->realm_id());
         for (const auto& character : characters)
         {
             auto* item = response->add_characters();
@@ -88,18 +104,23 @@ public:
     }
 
     grpc::Status CreateCharacter(
-        grpc::ServerContext*, const grpcmmo::auth::v1::CreateCharacterRequest* request,
+        grpc::ServerContext*,
+        const grpcmmo::auth::v1::CreateCharacterRequest* request,
         grpcmmo::auth::v1::CreateCharacterResponse* response) override
     {
         std::string error_message;
-        const auto character = storage_->CreateCharacter(request->account_access_token(),
-                                                         request->realm_id(), request->name(),
-                                                         &error_message);
+        const auto character = storage_->CreateCharacter(
+            request->account_access_token(),
+            request->realm_id(),
+            request->name(),
+            &error_message);
         if (!character.has_value())
         {
-            std::cout << "[auth] create_character failed name='" << request->name()
-                      << "' reason=" << error_message << std::endl;
-            return grpc::Status(grpc::StatusCode::ALREADY_EXISTS, error_message);
+            std::cout << "[auth] create_character failed name='"
+                      << request->name() << "' reason=" << error_message
+                      << std::endl;
+            return grpc::Status(
+                grpc::StatusCode::ALREADY_EXISTS, error_message);
         }
 
         auto* created = response->mutable_character();
@@ -109,25 +130,30 @@ public:
         created->set_zone_id(character->zone_id);
         created->set_last_seen_time_ms(character->last_seen_time_ms);
         created->set_online(character->online);
-        std::cout << "[auth] create_character ok character=" << character->character_id
-                  << " name='" << character->name << "'" << std::endl;
+        std::cout << "[auth] create_character ok character="
+                  << character->character_id << " name='" << character->name
+                  << "'" << std::endl;
         return grpc::Status::OK;
     }
 
     grpc::Status CreateSessionGrant(
-        grpc::ServerContext*, const grpcmmo::auth::v1::CreateSessionGrantRequest* request,
+        grpc::ServerContext*,
+        const grpcmmo::auth::v1::CreateSessionGrantRequest* request,
         grpcmmo::auth::v1::CreateSessionGrantResponse* response) override
     {
         std::string error_message;
-        const auto grant = storage_->CreateSessionGrant(request->account_access_token(),
-                                                        request->realm_id(),
-                                                        request->character_id(), &error_message);
+        const auto grant = storage_->CreateSessionGrant(
+            request->account_access_token(),
+            request->realm_id(),
+            request->character_id(),
+            &error_message);
         if (!grant.has_value())
         {
             std::cout << "[auth] create_session_grant failed character="
                       << request->character_id() << " reason=" << error_message
                       << std::endl;
-            return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, error_message);
+            return grpc::Status(
+                grpc::StatusCode::FAILED_PRECONDITION, error_message);
         }
 
         response->set_session_id(grant->session_id);
@@ -148,12 +174,13 @@ public:
         character->set_zone_id(grant->zone_id);
         character->set_last_seen_time_ms(grpcmmo::shared::NowMs());
         character->set_online(false);
-        std::cout << "[auth] create_session_grant ok session=" << grant->session_id
-                  << " character=" << grant->character_id << std::endl;
+        std::cout << "[auth] create_session_grant ok session="
+                  << grant->session_id << " character=" << grant->character_id
+                  << std::endl;
         return grpc::Status::OK;
     }
 
-private:
+  private:
     grpcmmo::storage::SqliteStorage* storage_;
     std::string realm_id_;
     std::string realm_name_;
@@ -173,14 +200,16 @@ int main(int argc, char** argv)
     grpcmmo::storage::SqliteStorage storage(config);
     storage.Initialize();
 
-    AuthServiceImpl service(&storage, absl::GetFlag(FLAGS_realm_id),
-                            absl::GetFlag(FLAGS_realm_name),
-                            absl::GetFlag(FLAGS_game_host),
-                            static_cast<std::uint32_t>(absl::GetFlag(FLAGS_game_port)));
+    AuthServiceImpl service(
+        &storage,
+        absl::GetFlag(FLAGS_realm_id),
+        absl::GetFlag(FLAGS_realm_name),
+        absl::GetFlag(FLAGS_game_host),
+        static_cast<std::uint32_t>(absl::GetFlag(FLAGS_game_port)));
 
     grpc::ServerBuilder builder;
-    builder.AddListeningPort(absl::GetFlag(FLAGS_listen_address),
-                             grpc::InsecureServerCredentials());
+    builder.AddListeningPort(
+        absl::GetFlag(FLAGS_listen_address), grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
 
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
@@ -190,8 +219,9 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    std::cout << "grpcMMO auth server listening on " << absl::GetFlag(FLAGS_listen_address)
-              << " using " << storage.Describe() << std::endl;
+    std::cout << "grpcMMO auth server listening on "
+              << absl::GetFlag(FLAGS_listen_address) << " using "
+              << storage.Describe() << std::endl;
     server->Wait();
     return 0;
 }

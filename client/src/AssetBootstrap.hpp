@@ -14,8 +14,9 @@ namespace grpcmmo::client
 {
 class AssetBootstrap
 {
-public:
+  public:
     std::filesystem::path EnsureFrameAssetsAvailable() const;
-    std::filesystem::path WriteGeneratedLevelJson(const frame::proto::Level& level) const;
+    std::filesystem::path WriteGeneratedLevelJson(
+        const frame::proto::Level& level) const;
 };
 } // namespace grpcmmo::client

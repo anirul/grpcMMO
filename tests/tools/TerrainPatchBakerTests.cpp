@@ -16,12 +16,14 @@ namespace
 {
 class TemporaryDirectory
 {
-public:
+  public:
     TemporaryDirectory()
     {
-        const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+        const auto stamp =
+            std::chrono::steady_clock::now().time_since_epoch().count();
         path_ = std::filesystem::temp_directory_path() /
-                std::filesystem::path("grpcmmo-terrain-tests-" + std::to_string(stamp));
+                std::filesystem::path(
+                    "grpcmmo-terrain-tests-" + std::to_string(stamp));
         std::filesystem::create_directories(path_);
     }
 
@@ -36,14 +38,15 @@ public:
         return path_;
     }
 
-private:
+  private:
     std::filesystem::path path_;
 };
 
-void WriteFloatRaster(const std::filesystem::path& output_path,
-                      std::uint32_t width,
-                      std::uint32_t height,
-                      const std::vector<float>& samples)
+void WriteFloatRaster(
+    const std::filesystem::path& output_path,
+    std::uint32_t width,
+    std::uint32_t height,
+    const std::vector<float>& samples)
 {
     ASSERT_EQ(samples.size(), static_cast<std::size_t>(width) * height);
     std::filesystem::create_directories(output_path.parent_path());
@@ -79,11 +82,9 @@ TEST(TerrainPatchBakerTests, InspectRasterReadsMetadata)
     TemporaryDirectory temporary_directory;
     const auto raster_path = temporary_directory.Path() / "input.tif";
     const std::vector<float> samples = {
-        0.0f, 1.0f, 2.0f, 3.0f, 4.0f,
-        10.0f, 11.0f, 12.0f, 13.0f, 14.0f,
-        20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
-        30.0f, 31.0f, 32.0f, 33.0f, 34.0f,
-        40.0f, 41.0f, 42.0f, 43.0f, 44.0f};
+        0.0f,  1.0f,  2.0f,  3.0f,  4.0f,  10.0f, 11.0f, 12.0f, 13.0f,
+        14.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f, 30.0f, 31.0f, 32.0f,
+        33.0f, 34.0f, 40.0f, 41.0f, 42.0f, 43.0f, 44.0f};
     WriteFloatRaster(raster_path, 5u, 5u, samples);
 
     const auto metadata = InspectRaster(raster_path);
@@ -99,11 +100,9 @@ TEST(TerrainPatchBakerTests, BakeTerrainPatchWritesExpectedOutputs)
     TemporaryDirectory temporary_directory;
     const auto raster_path = temporary_directory.Path() / "input.tif";
     const std::vector<float> samples = {
-        0.0f, 1.0f, 2.0f, 3.0f, 4.0f,
-        10.0f, 11.0f, 12.0f, 13.0f, 14.0f,
-        20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
-        30.0f, 31.0f, 32.0f, 33.0f, 34.0f,
-        40.0f, 41.0f, 42.0f, 43.0f, 44.0f};
+        0.0f,  1.0f,  2.0f,  3.0f,  4.0f,  10.0f, 11.0f, 12.0f, 13.0f,
+        14.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f, 30.0f, 31.0f, 32.0f,
+        33.0f, 34.0f, 40.0f, 41.0f, 42.0f, 43.0f, 44.0f};
     WriteFloatRaster(raster_path, 5u, 5u, samples);
 
     BakeSettings settings;
@@ -136,15 +135,23 @@ TEST(TerrainPatchBakerTests, BakeTerrainPatchWritesExpectedOutputs)
     EXPECT_TRUE(std::filesystem::exists(result.preview_gltf_file));
     EXPECT_TRUE(std::filesystem::exists(result.preview_texture_file));
     EXPECT_TRUE(std::filesystem::exists(result.metadata_file));
-    EXPECT_EQ(std::filesystem::file_size(result.height_file), 25u * sizeof(float));
+    EXPECT_EQ(
+        std::filesystem::file_size(result.height_file), 25u * sizeof(float));
 
     std::ifstream metadata(result.metadata_file);
     ASSERT_TRUE(metadata.is_open());
-    std::string metadata_contents((std::istreambuf_iterator<char>(metadata)),
-                                  std::istreambuf_iterator<char>());
-    EXPECT_NE(metadata_contents.find("\"patch_id\": \"patch-000\""), std::string::npos);
-    EXPECT_NE(metadata_contents.find("\"origin_height_m\": 22.000000"), std::string::npos);
-    EXPECT_NE(metadata_contents.find("\"base_color_texture\": \"ground_preview_basecolor.png\""),
-              std::string::npos);
+    std::string metadata_contents(
+        (std::istreambuf_iterator<char>(metadata)),
+        std::istreambuf_iterator<char>());
+    EXPECT_NE(
+        metadata_contents.find("\"patch_id\": \"patch-000\""),
+        std::string::npos);
+    EXPECT_NE(
+        metadata_contents.find("\"origin_height_m\": 22.000000"),
+        std::string::npos);
+    EXPECT_NE(
+        metadata_contents.find(
+            "\"base_color_texture\": \"ground_preview_basecolor.png\""),
+        std::string::npos);
 }
 } // namespace grpcmmo::tools::terrain

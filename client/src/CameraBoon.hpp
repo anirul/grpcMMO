@@ -9,7 +9,7 @@ namespace grpcmmo::client
 {
 class CameraBoon : public Object
 {
-public:
+  public:
     void Init() override;
     void End() override;
     void Tick(float delta_seconds) override;
@@ -22,7 +22,7 @@ public:
     [[nodiscard]] float GetDistanceMeters() const;
     [[nodiscard]] float GetFocusHeightMeters() const;
 
-private:
+  private:
     static constexpr float kDistanceMeters = 7.2f;
     static constexpr float kFocusHeightMeters = 0.70f;
     static constexpr float kPitchMinRadians = 0.20f;

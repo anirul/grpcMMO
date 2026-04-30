@@ -21,7 +21,7 @@ struct CameraPose
 
 class Camera : public Object
 {
-public:
+  public:
     void Init() override;
     void End() override;
     void Tick(float delta_seconds) override;
@@ -29,7 +29,7 @@ public:
     void Attach(frame::WindowInterface* window);
     void SetPose(const CameraPose& pose);
 
-private:
+  private:
     frame::WindowInterface* window_ = nullptr;
     CameraPose pose_{};
     bool has_pose_ = false;

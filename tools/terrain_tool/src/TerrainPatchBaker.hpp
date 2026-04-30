@@ -61,7 +61,9 @@ struct BakeResult
     std::size_t triangle_count = 0;
 };
 
-[[nodiscard]] RasterMetadata InspectRaster(const std::filesystem::path& input_tiff);
+[[nodiscard]] RasterMetadata InspectRaster(
+    const std::filesystem::path& input_tiff);
 [[nodiscard]] BakeResult BakeTerrainPatch(const BakeSettings& settings);
-[[nodiscard]] const char* RasterSampleFormatName(RasterSampleFormat sample_format);
+[[nodiscard]] const char* RasterSampleFormatName(
+    RasterSampleFormat sample_format);
 } // namespace grpcmmo::tools::terrain

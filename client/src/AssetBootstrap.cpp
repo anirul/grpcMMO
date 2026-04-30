@@ -4,15 +4,15 @@
 #include <fstream>
 #include <optional>
 #include <sstream>
-#include <string_view>
 #include <stdexcept>
+#include <string_view>
 #include <system_error>
 #include <vector>
 
+#include "WorkspacePaths.hpp"
 #include "frame/json/proto.h"
 #include "frame/json/serialize_json.h"
 #include "grpcmmo/shared/WorkspaceConfig.hpp"
-#include "WorkspacePaths.hpp"
 
 namespace grpcmmo::client
 {
@@ -24,8 +24,9 @@ void RemoveFileIfPresent(const std::filesystem::path& path)
     std::filesystem::remove(path, error);
 }
 
-void CopyFileIfChanged(const std::filesystem::path& source,
-                       const std::filesystem::path& destination)
+void CopyFileIfChanged(
+    const std::filesystem::path& source,
+    const std::filesystem::path& destination)
 {
     std::ifstream in(source, std::ios::binary);
     if (!in.is_open())
@@ -57,7 +58,8 @@ void CopyFileIfChanged(const std::filesystem::path& source,
     {
         throw std::runtime_error("failed to write " + destination.string());
     }
-    out.write(source_data.data(), static_cast<std::streamsize>(source_data.size()));
+    out.write(
+        source_data.data(), static_cast<std::streamsize>(source_data.size()));
 }
 
 std::string ReadTextFile(const std::filesystem::path& path)
@@ -73,8 +75,8 @@ std::string ReadTextFile(const std::filesystem::path& path)
     return buffer.str();
 }
 
-void WriteTextFileIfChanged(const std::filesystem::path& destination,
-                            const std::string& contents)
+void WriteTextFileIfChanged(
+    const std::filesystem::path& destination, const std::string& contents)
 {
     bool should_write = true;
     std::ifstream existing(destination, std::ios::binary);
@@ -95,10 +97,12 @@ void WriteTextFileIfChanged(const std::filesystem::path& destination,
     {
         throw std::runtime_error("failed to write " + destination.string());
     }
-    output.write(contents.data(), static_cast<std::streamsize>(contents.size()));
+    output.write(
+        contents.data(), static_cast<std::streamsize>(contents.size()));
 }
 
-std::size_t FindJsonSectionLineStart(std::string_view text, std::string_view key)
+std::size_t FindJsonSectionLineStart(
+    std::string_view text, std::string_view key)
 {
     const std::size_t key_start = text.find(key);
     if (key_start == std::string::npos)
@@ -115,10 +119,11 @@ std::size_t FindJsonSectionLineStart(std::string_view text, std::string_view key
     return line_start + 1;
 }
 
-bool ReplaceJsonSection(std::string* text,
-                        std::string_view start_key,
-                        std::string_view next_key,
-                        const std::string& replacement)
+bool ReplaceJsonSection(
+    std::string* text,
+    std::string_view start_key,
+    std::string_view next_key,
+    const std::string& replacement)
 {
     const std::size_t start = FindJsonSectionLineStart(*text, start_key);
     if (start == std::string::npos)
@@ -167,7 +172,8 @@ void ApplyGroundPbrOverrideIfPresent(
         "    {\n"
         "      \"name\": \"GroundPreview\",\n"
         "      \"pbrMetallicRoughness\": {\n"
-        "        \"baseColorFactor\": [1.000000, 1.000000, 1.000000, 1.000000],\n"
+        "        \"baseColorFactor\": [1.000000, 1.000000, 1.000000, "
+        "1.000000],\n"
         "        \"baseColorTexture\": {\n"
         "          \"index\": 0\n"
         "        },\n"
@@ -199,37 +205,27 @@ void ApplyGroundPbrOverrideIfPresent(
         "      \"uri\": \"ground_pbr/red_laterite_soil_stones_arm_1k.jpg\"\n"
         "    }\n"
         "  ],\n";
-    const std::string textures_section =
-        "  \"textures\": [\n"
-        "    {\n"
-        "      \"sampler\": 0,\n"
-        "      \"source\": 0\n"
-        "    },\n"
-        "    {\n"
-        "      \"sampler\": 0,\n"
-        "      \"source\": 1\n"
-        "    },\n"
-        "    {\n"
-        "      \"sampler\": 0,\n"
-        "      \"source\": 2\n"
-        "    }\n"
-        "  ],\n";
+    const std::string textures_section = "  \"textures\": [\n"
+                                         "    {\n"
+                                         "      \"sampler\": 0,\n"
+                                         "      \"source\": 0\n"
+                                         "    },\n"
+                                         "    {\n"
+                                         "      \"sampler\": 0,\n"
+                                         "      \"source\": 1\n"
+                                         "    },\n"
+                                         "    {\n"
+                                         "      \"sampler\": 0,\n"
+                                         "      \"source\": 2\n"
+                                         "    }\n"
+                                         "  ],\n";
 
     const bool replaced_materials = ReplaceJsonSection(
-        &gltf,
-        "\"materials\": [",
-        "\"samplers\": [",
-        material_section);
+        &gltf, "\"materials\": [", "\"samplers\": [", material_section);
     const bool replaced_images = ReplaceJsonSection(
-        &gltf,
-        "\"images\": [",
-        "\"textures\": [",
-        images_section);
+        &gltf, "\"images\": [", "\"textures\": [", images_section);
     const bool replaced_textures = ReplaceJsonSection(
-        &gltf,
-        "\"textures\": [",
-        "\"buffers\": [",
-        textures_section);
+        &gltf, "\"textures\": [", "\"buffers\": [", textures_section);
 
     if (!replaced_materials || !replaced_images || !replaced_textures)
     {
@@ -245,7 +241,8 @@ void ApplyGroundPbrOverrideIfPresent(
 std::filesystem::path AssetBootstrap::EnsureFrameAssetsAvailable() const
 {
     const std::filesystem::path project_root = ResolveProjectRoot();
-    const std::filesystem::path frame_root = NormalizePath(grpcmmo::shared::kFrameRoot);
+    const std::filesystem::path frame_root =
+        NormalizePath(grpcmmo::shared::kFrameRoot);
     const std::filesystem::path source_asset_root = frame_root / "asset";
     const std::filesystem::path destination_asset_root = project_root / "asset";
     const std::filesystem::path preview_gltf_destination =
@@ -264,8 +261,9 @@ std::filesystem::path AssetBootstrap::EnsureFrameAssetsAvailable() const
     {
         if (!std::filesystem::exists(source_directory))
         {
-            throw std::runtime_error("Frame asset directory not found: " +
-                                     source_directory.string());
+            throw std::runtime_error(
+                "Frame asset directory not found: " +
+                source_directory.string());
         }
 
         for (const auto& entry :
@@ -276,45 +274,48 @@ std::filesystem::path AssetBootstrap::EnsureFrameAssetsAvailable() const
                 continue;
             }
 
-            const auto relative = std::filesystem::relative(entry.path(), source_asset_root);
+            const auto relative =
+                std::filesystem::relative(entry.path(), source_asset_root);
             CopyFileIfChanged(entry.path(), destination_asset_root / relative);
         }
     }
 
     if (grpcmmo::shared::kHaveDataRepo)
     {
-        const std::filesystem::path terrain_preview_source =
-            NormalizePath(std::filesystem::path(grpcmmo::shared::kDataRoot) /
-                          "tiles" / "mars" / "patch-000" / "ground_preview.gltf");
+        const std::filesystem::path terrain_preview_source = NormalizePath(
+            std::filesystem::path(grpcmmo::shared::kDataRoot) / "tiles" /
+            "mars" / "patch-000" / "ground_preview.gltf");
         const std::filesystem::path terrain_preview_texture_source =
-            NormalizePath(std::filesystem::path(grpcmmo::shared::kDataRoot) /
-                          "tiles" / "mars" / "patch-000" / "ground_preview_basecolor.png");
+            NormalizePath(
+                std::filesystem::path(grpcmmo::shared::kDataRoot) / "tiles" /
+                "mars" / "patch-000" / "ground_preview_basecolor.png");
         if (std::filesystem::exists(terrain_preview_source))
         {
             CopyFileIfChanged(terrain_preview_source, preview_gltf_destination);
             if (std::filesystem::exists(terrain_preview_texture_source))
             {
-                CopyFileIfChanged(terrain_preview_texture_source,
-                                  preview_texture_destination);
+                CopyFileIfChanged(
+                    terrain_preview_texture_source,
+                    preview_texture_destination);
             }
             else
             {
                 RemoveFileIfPresent(preview_texture_destination);
             }
             RemoveFileIfPresent(preview_obj_destination);
-            ApplyGroundPbrOverrideIfPresent(preview_gltf_destination,
-                                            destination_asset_root);
+            ApplyGroundPbrOverrideIfPresent(
+                preview_gltf_destination, destination_asset_root);
         }
         else
         {
-            ApplyGroundPbrOverrideIfPresent(preview_gltf_destination,
-                                            destination_asset_root);
+            ApplyGroundPbrOverrideIfPresent(
+                preview_gltf_destination, destination_asset_root);
         }
     }
     else
     {
-        ApplyGroundPbrOverrideIfPresent(preview_gltf_destination,
-                                        destination_asset_root);
+        ApplyGroundPbrOverrideIfPresent(
+            preview_gltf_destination, destination_asset_root);
     }
 
     return destination_asset_root / "shader";

@@ -28,8 +28,9 @@ void Camera::Tick(float /*delta_seconds*/)
 
     auto& level = window_->GetDevice().GetLevel();
     auto& camera = level.GetDefaultCamera();
-    camera.SetAspectRatio(static_cast<float>(window_->GetSize().x) /
-                          static_cast<float>(std::max(1u, window_->GetSize().y)));
+    camera.SetAspectRatio(
+        static_cast<float>(window_->GetSize().x) /
+        static_cast<float>(std::max(1u, window_->GetSize().y)));
     camera.SetPosition(pose_.position);
     camera.SetFront(glm::normalize(pose_.target - pose_.position));
     camera.SetUp(pose_.up);

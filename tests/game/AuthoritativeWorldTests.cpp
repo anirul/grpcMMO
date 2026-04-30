@@ -16,14 +16,15 @@ namespace
 using grpcmmo::shared::planet::AltitudeFromPosition;
 using grpcmmo::shared::planet::BuildPreviewPatchFrame;
 using grpcmmo::shared::planet::BuildPreviewPatchOriginPlanetPosition;
+using grpcmmo::shared::planet::kMarsPreviewPatch000;
 using grpcmmo::shared::planet::PreviewPatchSurfaceAltitudeM;
 using grpcmmo::shared::planet::PreviewPatchTerrainSampler;
 using grpcmmo::shared::planet::WorldDirectionToLocal;
 using grpcmmo::shared::planet::WorldPositionToLocal;
-using grpcmmo::shared::planet::kMarsPreviewPatch000;
 
-ConnectedPlayer MakePlayer(const std::string& session_id = "session-1",
-                           const std::string& character_id = "char-1")
+ConnectedPlayer MakePlayer(
+    const std::string& session_id = "session-1",
+    const std::string& character_id = "char-1")
 {
     ConnectedPlayer player;
     player.session_id = session_id;
@@ -42,7 +43,8 @@ glm::dvec3 ToDVec3(const grpcmmo::world::v1::Vector3d& value)
 
 glm::dquat ToDQuat(const grpcmmo::world::v1::Quaterniond& value)
 {
-    return glm::normalize(glm::dquat(value.w(), value.x(), value.y(), value.z()));
+    return glm::normalize(
+        glm::dquat(value.w(), value.x(), value.y(), value.z()));
 }
 
 const grpcmmo::shared::planet::TangentFrame& PreviewPatchFrame()
@@ -63,29 +65,30 @@ glm::vec3 ToLocalDirection(const glm::dvec3& world_direction)
 {
     const glm::dvec3 local_direction =
         WorldDirectionToLocal(world_direction, PreviewPatchFrame());
-    return glm::normalize(glm::vec3(static_cast<float>(local_direction.x),
-                                    static_cast<float>(local_direction.y),
-                                    static_cast<float>(local_direction.z)));
+    return glm::normalize(glm::vec3(
+        static_cast<float>(local_direction.x),
+        static_cast<float>(local_direction.y),
+        static_cast<float>(local_direction.z)));
 }
 
 glm::dvec3 ToLocalPosition(const grpcmmo::world::v1::EntityPatch& patch)
 {
-    return WorldPositionToLocal(ToDVec3(patch.transform().position_m()),
-                                PreviewPatchOriginPlanetPosition(),
-                                PreviewPatchFrame());
+    return WorldPositionToLocal(
+        ToDVec3(patch.transform().position_m()),
+        PreviewPatchOriginPlanetPosition(),
+        PreviewPatchFrame());
 }
 
 glm::vec3 ForwardFromPatch(const grpcmmo::world::v1::EntityPatch& patch)
 {
-    const glm::dvec3 world_forward =
-        glm::rotate(ToDQuat(patch.transform().orientation()), glm::dvec3(1.0, 0.0, 0.0));
+    const glm::dvec3 world_forward = glm::rotate(
+        ToDQuat(patch.transform().orientation()), glm::dvec3(1.0, 0.0, 0.0));
     return ToLocalDirection(world_forward);
 }
 
 double ExpectedAltitudeFromPreviewTerrain(const glm::dvec3& position_m)
 {
-    static PreviewPatchTerrainSampler sampler = []
-    {
+    static PreviewPatchTerrainSampler sampler = [] {
         PreviewPatchTerrainSampler instance;
         (void)instance.Load(kMarsPreviewPatch000);
         return instance;
@@ -107,7 +110,9 @@ TEST(AuthoritativeWorldTest, ConnectPlayerReturnsControlledInitialEntity)
 
     EXPECT_EQ(result.initial_entity.entity_id(), "entity-char-1");
     EXPECT_EQ(result.initial_entity.metadata().display_name(), "Explorer");
-    EXPECT_EQ(result.initial_entity.metadata().kind(), grpcmmo::world::v1::ENTITY_KIND_PLAYER);
+    EXPECT_EQ(
+        result.initial_entity.metadata().kind(),
+        grpcmmo::world::v1::ENTITY_KIND_PLAYER);
     EXPECT_TRUE(result.initial_entity.metadata().controlled_entity());
     ASSERT_EQ(result.initial_batch.entities_size(), 1);
     EXPECT_EQ(result.initial_batch.entities(0).entity_id(), "entity-char-1");
@@ -132,16 +137,21 @@ TEST(AuthoritativeWorldTest, ApplyInputClampsMovementToServerSpeedLimit)
     ASSERT_EQ(batch->entities_size(), 1);
 
     const auto& moved_patch = batch->entities(0);
-    const glm::dvec3 moved_position = ToDVec3(moved_patch.transform().position_m());
+    const glm::dvec3 moved_position =
+        ToDVec3(moved_patch.transform().position_m());
     const glm::dvec3 moved_local_position = ToLocalPosition(moved_patch);
-    const glm::dvec3 local_delta = moved_local_position - initial_local_position;
+    const glm::dvec3 local_delta =
+        moved_local_position - initial_local_position;
 
-    EXPECT_NEAR(glm::length(glm::dvec2(local_delta.x, local_delta.z)), 0.2, 0.0005);
+    EXPECT_NEAR(
+        glm::length(glm::dvec2(local_delta.x, local_delta.z)), 0.2, 0.0005);
     EXPECT_NEAR(local_delta.x, 0.2, 0.0005);
     EXPECT_NEAR(local_delta.z, 0.0, 0.0005);
-    EXPECT_NEAR(AltitudeFromPosition(moved_position, kMarsPreviewPatch000.planet_radius_m),
-                ExpectedAltitudeFromPreviewTerrain(moved_position),
-                0.0005);
+    EXPECT_NEAR(
+        AltitudeFromPosition(
+            moved_position, kMarsPreviewPatch000.planet_radius_m),
+        ExpectedAltitudeFromPreviewTerrain(moved_position),
+        0.0005);
 }
 
 TEST(AuthoritativeWorldTest, ApplyInputUsesFacingDirectionVectorWhenProvided)
@@ -164,7 +174,9 @@ TEST(AuthoritativeWorldTest, ApplyInputUsesFacingDirectionVectorWhenProvided)
     EXPECT_NEAR(forward.z, 1.0f, 0.0001f);
 }
 
-TEST(AuthoritativeWorldTest, ApplyInputFallsBackToMovementDirectionWhenFacingIsMissing)
+TEST(
+    AuthoritativeWorldTest,
+    ApplyInputFallsBackToMovementDirectionWhenFacingIsMissing)
 {
     AuthoritativeWorld world;
     world.ConnectPlayer(MakePlayer());

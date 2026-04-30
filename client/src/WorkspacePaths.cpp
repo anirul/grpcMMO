@@ -21,8 +21,8 @@ std::filesystem::path ResolveExecutablePath()
     std::vector<wchar_t> buffer(MAX_PATH);
     while (true)
     {
-        const DWORD length =
-            GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+        const DWORD length = GetModuleFileNameW(
+            nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
         if (length == 0)
         {
             break;
@@ -37,7 +37,8 @@ std::filesystem::path ResolveExecutablePath()
     std::vector<char> buffer(1024, '\0');
     while (true)
     {
-        const ssize_t length = readlink("/proc/self/exe", buffer.data(), buffer.size() - 1u);
+        const ssize_t length =
+            readlink("/proc/self/exe", buffer.data(), buffer.size() - 1u);
         if (length < 0)
         {
             break;
@@ -61,7 +62,8 @@ bool IsProjectRoot(const std::filesystem::path& path)
            std::filesystem::is_directory(path / "services");
 }
 
-std::optional<std::filesystem::path> FindProjectRootFrom(const std::filesystem::path& start)
+std::optional<std::filesystem::path> FindProjectRootFrom(
+    const std::filesystem::path& start)
 {
     auto candidate = NormalizePath(start);
     while (true)
@@ -92,13 +94,15 @@ std::filesystem::path NormalizePath(const std::filesystem::path& path)
 
 std::filesystem::path ResolveProjectRoot()
 {
-    if (const auto from_current = FindProjectRootFrom(std::filesystem::current_path()))
+    if (const auto from_current =
+            FindProjectRootFrom(std::filesystem::current_path()))
     {
         return *from_current;
     }
 
     const auto executable_path = ResolveExecutablePath();
-    if (const auto from_executable = FindProjectRootFrom(executable_path.parent_path()))
+    if (const auto from_executable =
+            FindProjectRootFrom(executable_path.parent_path()))
     {
         return *from_executable;
     }

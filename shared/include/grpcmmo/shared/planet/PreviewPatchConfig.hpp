@@ -32,7 +32,8 @@ struct PreviewPatchConfig
 [[nodiscard]] inline glm::dvec3 BuildPreviewPatchUp(
     const PreviewPatchConfig& config)
 {
-    return DirectionFromLatLonDegrees(config.center_lat_deg, config.center_lon_deg);
+    return DirectionFromLatLonDegrees(
+        config.center_lat_deg, config.center_lon_deg);
 }
 
 [[nodiscard]] inline TangentFrame BuildPreviewPatchFrame(
@@ -44,10 +45,11 @@ struct PreviewPatchConfig
 [[nodiscard]] inline glm::dvec3 BuildPreviewPatchOriginPlanetPosition(
     const PreviewPatchConfig& config)
 {
-    return PositionFromLatLonAltitude(config.planet_radius_m,
-                                      config.center_lat_deg,
-                                      config.center_lon_deg,
-                                      PreviewPatchOriginHeightM(config));
+    return PositionFromLatLonAltitude(
+        config.planet_radius_m,
+        config.center_lat_deg,
+        config.center_lon_deg,
+        PreviewPatchOriginHeightM(config));
 }
 
 inline constexpr PreviewPatchConfig kMarsPreviewPatch000{};

@@ -28,35 +28,40 @@ struct ClientConnectionConfig
 
 class GrpcSessionClient
 {
-public:
+  public:
     GrpcSessionClient();
     ~GrpcSessionClient();
 
-    bool Connect(const ClientConnectionConfig& config, std::string* error_message);
+    bool Connect(
+        const ClientConnectionConfig& config, std::string* error_message);
     bool SendMove(const MoveCommand& move_command);
     bool SendPing();
     void PollMessages(
-        const std::function<void(const grpcmmo::session::v1::ServerMessage&)>& on_message);
+        const std::function<void(const grpcmmo::session::v1::ServerMessage&)>&
+            on_message);
     grpc::Status Shutdown();
     bool IsOpen() const;
 
-private:
-    bool FetchOrCreateCharacter(const ClientConnectionConfig& config,
-                                const grpcmmo::auth::v1::LoginResponse& login_response,
-                                grpcmmo::auth::v1::CharacterSummary* character,
-                                std::string* error_message);
-    bool OpenSessionStream(const ClientConnectionConfig& config,
-                           const grpcmmo::auth::v1::CharacterSummary& character,
-                           const grpcmmo::auth::v1::CreateSessionGrantResponse& grant_response,
-                           std::string* error_message);
+  private:
+    bool FetchOrCreateCharacter(
+        const ClientConnectionConfig& config,
+        const grpcmmo::auth::v1::LoginResponse& login_response,
+        grpcmmo::auth::v1::CharacterSummary* character,
+        std::string* error_message);
+    bool OpenSessionStream(
+        const ClientConnectionConfig& config,
+        const grpcmmo::auth::v1::CharacterSummary& character,
+        const grpcmmo::auth::v1::CreateSessionGrantResponse& grant_response,
+        std::string* error_message);
     void StartReader();
     void StartWriter();
     bool EnqueueMessage(grpcmmo::session::v1::ClientMessage&& message);
 
     std::unique_ptr<grpcmmo::session::v1::SessionService::Stub> session_stub_;
     std::unique_ptr<grpc::ClientContext> session_context_;
-    std::unique_ptr<grpc::ClientReaderWriter<grpcmmo::session::v1::ClientMessage,
-                                             grpcmmo::session::v1::ServerMessage>>
+    std::unique_ptr<grpc::ClientReaderWriter<
+        grpcmmo::session::v1::ClientMessage,
+        grpcmmo::session::v1::ServerMessage>>
         session_stream_;
     std::thread reader_thread_;
     std::thread writer_thread_;

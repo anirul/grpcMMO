@@ -49,9 +49,10 @@ void CameraBoon::AddYawDelta(float yaw_delta_radians)
 
 void CameraBoon::AddPitchDelta(float pitch_delta_radians)
 {
-    pitch_radians_ = std::clamp(pitch_radians_ + pitch_delta_radians,
-                                kPitchMinRadians,
-                                kPitchMaxRadians);
+    pitch_radians_ = std::clamp(
+        pitch_radians_ + pitch_delta_radians,
+        kPitchMinRadians,
+        kPitchMaxRadians);
 }
 
 float CameraBoon::GetYawRadians() const

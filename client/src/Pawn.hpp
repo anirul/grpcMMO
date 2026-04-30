@@ -23,7 +23,7 @@ struct PawnSnapshot
 
 class Pawn : public Actor
 {
-public:
+  public:
     void Init() override;
     void End() override;
     void Tick(float delta_seconds) override;
@@ -34,8 +34,8 @@ public:
     void SetLocalFacingDirection(const glm::vec3& direction);
     void SetPredictedPosition(const glm::vec3& position);
     void SetPredictedSurfaceUp(const glm::vec3& surface_up);
-    void SetPredictedRenderState(const glm::vec3& position,
-                                 const glm::vec3& surface_up);
+    void SetPredictedRenderState(
+        const glm::vec3& position, const glm::vec3& surface_up);
 
     [[nodiscard]] const std::string& GetEntityId() const;
     [[nodiscard]] glm::vec3 GetRenderFacingDirection() const;
@@ -46,7 +46,7 @@ public:
     [[nodiscard]] glm::vec3 GetSurfaceUp() const;
     [[nodiscard]] const char* GetActorClassName() const override;
 
-private:
+  private:
     void Reconcile(float delta_seconds);
     void SyncRootComponentFromRenderState();
 

@@ -14,7 +14,7 @@ namespace grpcmmo::client
 {
 class PlayerController : public Controller, public frame::InputInterface
 {
-public:
+  public:
     struct FrameInput
     {
         float move_forward = 0.0f;
@@ -32,8 +32,8 @@ public:
 
     [[nodiscard]] FrameInput ConsumeFrameInput() const;
     void DriveCamera(const FrameInput& frame_input);
-    [[nodiscard]] MoveCommand DrivePawn(const FrameInput& frame_input,
-                                        float delta_seconds);
+    [[nodiscard]] MoveCommand DrivePawn(
+        const FrameInput& frame_input, float delta_seconds);
     [[nodiscard]] glm::vec3 GetLookFacingDirection() const;
     [[nodiscard]] const CameraBoon& GetCameraBoon() const;
 
@@ -45,7 +45,7 @@ public:
     bool WheelMoved(float relative, double dt) override;
     void NextFrame() override;
 
-private:
+  private:
     void ResetState();
 
     static constexpr float kMoveSpeedMetersPerSecond = 4.0f;

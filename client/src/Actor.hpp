@@ -15,7 +15,7 @@ class Actor;
 
 class ActorComponent : public Object
 {
-public:
+  public:
     void Init() override
     {
     }
@@ -43,13 +43,13 @@ public:
         return owner_;
     }
 
-private:
+  private:
     Actor* owner_ = nullptr;
 };
 
 class SceneComponent : public ActorComponent
 {
-public:
+  public:
     void SetWorldPosition(const glm::vec3& world_position)
     {
         world_position_ = world_position;
@@ -92,7 +92,7 @@ public:
                glm::scale(glm::mat4(1.0f), world_scale_);
     }
 
-private:
+  private:
     glm::vec3 world_position_ = glm::vec3(0.0f);
     glm::quat world_orientation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     glm::vec3 world_scale_ = glm::vec3(1.0f);
@@ -100,7 +100,7 @@ private:
 
 class Actor : public Object
 {
-public:
+  public:
     void Init() override
     {
         root_component_.SetOwner(this);
@@ -163,7 +163,7 @@ public:
         return "Actor";
     }
 
-private:
+  private:
     std::string entity_id_;
     std::string display_name_;
     bool replicated_ = false;

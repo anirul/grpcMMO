@@ -14,10 +14,10 @@ namespace grpcmmo::client
 {
 class Client
 {
-public:
+  public:
     int Run(int argc, char** argv);
 
-private:
+  private:
     void LoadFlags();
     void PumpNetworkMessages();
     bool Tick(float delta_seconds);

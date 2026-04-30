@@ -6,7 +6,7 @@ namespace grpcmmo::client
 {
 class Character : public Pawn
 {
-public:
+  public:
     [[nodiscard]] const char* GetActorClassName() const override
     {
         return "Character";
@@ -15,7 +15,7 @@ public:
 
 class PlayerCharacter final : public Character
 {
-public:
+  public:
     [[nodiscard]] const char* GetActorClassName() const override
     {
         return "PlayerCharacter";
@@ -24,7 +24,7 @@ public:
 
 class NpcCharacter final : public Character
 {
-public:
+  public:
     [[nodiscard]] const char* GetActorClassName() const override
     {
         return "NpcCharacter";

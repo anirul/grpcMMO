@@ -4,7 +4,7 @@ namespace grpcmmo::client
 {
 class Object
 {
-public:
+  public:
     virtual ~Object() = default;
 
     virtual void Init() = 0;

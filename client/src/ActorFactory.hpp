@@ -11,10 +11,9 @@ namespace grpcmmo::client
 {
 class ActorFactory
 {
-public:
+  public:
     [[nodiscard]] std::unique_ptr<PlanetActor> CreatePlanetActor(
-        const std::string& entity_id,
-        const std::string& display_name) const
+        const std::string& entity_id, const std::string& display_name) const
     {
         auto actor = std::make_unique<PlanetActor>();
         actor->SetEntityId(entity_id);
@@ -23,8 +22,7 @@ public:
     }
 
     [[nodiscard]] std::unique_ptr<StaticPropActor> CreateStaticPropActor(
-        const std::string& entity_id,
-        const std::string& display_name) const
+        const std::string& entity_id, const std::string& display_name) const
     {
         auto actor = std::make_unique<StaticPropActor>();
         actor->SetEntityId(entity_id);
@@ -32,9 +30,9 @@ public:
         return actor;
     }
 
-    [[nodiscard]] std::unique_ptr<InteractivePropActor> CreateInteractivePropActor(
-        const std::string& entity_id,
-        const std::string& display_name) const
+    [[nodiscard]] std::unique_ptr<InteractivePropActor>
+    CreateInteractivePropActor(
+        const std::string& entity_id, const std::string& display_name) const
     {
         auto actor = std::make_unique<InteractivePropActor>();
         actor->SetEntityId(entity_id);

@@ -12,7 +12,7 @@ std::string ToAddress(const grpcmmo::auth::v1::RealmEndpoint& endpoint)
 {
     return endpoint.host() + ":" + std::to_string(endpoint.port());
 }
-}
+} // namespace
 
 GrpcSessionClient::GrpcSessionClient() = default;
 
@@ -21,8 +21,8 @@ GrpcSessionClient::~GrpcSessionClient()
     Shutdown();
 }
 
-bool GrpcSessionClient::Connect(const ClientConnectionConfig& config,
-                                std::string* error_message)
+bool GrpcSessionClient::Connect(
+    const ClientConnectionConfig& config, std::string* error_message)
 {
     const grpc::Status previous_status = Shutdown();
     if (!previous_status.ok())
@@ -35,9 +35,8 @@ bool GrpcSessionClient::Connect(const ClientConnectionConfig& config,
         return false;
     }
 
-    const auto auth_channel =
-        grpc::CreateChannel(config.auth_server_address,
-                            grpc::InsecureChannelCredentials());
+    const auto auth_channel = grpc::CreateChannel(
+        config.auth_server_address, grpc::InsecureChannelCredentials());
     auto auth_stub = grpcmmo::auth::v1::AuthService::NewStub(auth_channel);
 
     grpc::ClientContext login_context;
@@ -58,30 +57,33 @@ bool GrpcSessionClient::Connect(const ClientConnectionConfig& config,
     }
 
     grpcmmo::auth::v1::CharacterSummary selected_character;
-    if (!FetchOrCreateCharacter(config, login_response, &selected_character, error_message))
+    if (!FetchOrCreateCharacter(
+            config, login_response, &selected_character, error_message))
     {
         return false;
     }
 
     grpc::ClientContext grant_context;
     grpcmmo::auth::v1::CreateSessionGrantRequest grant_request;
-    grant_request.set_account_access_token(login_response.account_access_token());
+    grant_request.set_account_access_token(
+        login_response.account_access_token());
     grant_request.set_realm_id(config.realm_id);
     grant_request.set_character_id(selected_character.character_id());
     grpcmmo::auth::v1::CreateSessionGrantResponse grant_response;
-    const grpc::Status grant_status =
-        auth_stub->CreateSessionGrant(&grant_context, grant_request, &grant_response);
+    const grpc::Status grant_status = auth_stub->CreateSessionGrant(
+        &grant_context, grant_request, &grant_response);
     if (!grant_status.ok())
     {
         if (error_message != nullptr)
         {
-            *error_message = "create session grant failed: " +
-                             grant_status.error_message();
+            *error_message =
+                "create session grant failed: " + grant_status.error_message();
         }
         return false;
     }
 
-    if (!OpenSessionStream(config, selected_character, grant_response, error_message))
+    if (!OpenSessionStream(
+            config, selected_character, grant_response, error_message))
     {
         return false;
     }
@@ -100,14 +102,18 @@ bool GrpcSessionClient::SendMove(const MoveCommand& move_command)
 
     grpcmmo::session::v1::ClientMessage input_message;
     auto* input = input_message.mutable_input_frame();
-    const auto sequence = next_input_sequence_.fetch_add(1, std::memory_order_relaxed);
+    const auto sequence =
+        next_input_sequence_.fetch_add(1, std::memory_order_relaxed);
     input->set_command_id("move-" + std::to_string(sequence));
     input->set_client_time_ms(grpcmmo::shared::NowMs());
     input->set_input_sequence(sequence);
     auto* move = input->mutable_move();
-    move->mutable_world_displacement_m()->set_x(move_command.world_displacement_m.x);
-    move->mutable_world_displacement_m()->set_y(move_command.world_displacement_m.y);
-    move->mutable_world_displacement_m()->set_z(move_command.world_displacement_m.z);
+    move->mutable_world_displacement_m()->set_x(
+        move_command.world_displacement_m.x);
+    move->mutable_world_displacement_m()->set_y(
+        move_command.world_displacement_m.y);
+    move->mutable_world_displacement_m()->set_z(
+        move_command.world_displacement_m.z);
     if (move_command.has_facing_direction)
     {
         auto* facing_direction = move->mutable_facing_direction_unit();
@@ -131,7 +137,8 @@ bool GrpcSessionClient::SendPing()
 }
 
 void GrpcSessionClient::PollMessages(
-    const std::function<void(const grpcmmo::session::v1::ServerMessage&)>& on_message)
+    const std::function<void(const grpcmmo::session::v1::ServerMessage&)>&
+        on_message)
 {
     std::deque<grpcmmo::session::v1::ServerMessage> pending;
     {
@@ -221,14 +228,14 @@ bool GrpcSessionClient::FetchOrCreateCharacter(
     grpcmmo::auth::v1::CharacterSummary* character,
     std::string* error_message)
 {
-    const auto auth_channel =
-        grpc::CreateChannel(config.auth_server_address,
-                            grpc::InsecureChannelCredentials());
+    const auto auth_channel = grpc::CreateChannel(
+        config.auth_server_address, grpc::InsecureChannelCredentials());
     auto auth_stub = grpcmmo::auth::v1::AuthService::NewStub(auth_channel);
 
     grpc::ClientContext list_context;
     grpcmmo::auth::v1::ListCharactersRequest list_request;
-    list_request.set_account_access_token(login_response.account_access_token());
+    list_request.set_account_access_token(
+        login_response.account_access_token());
     list_request.set_realm_id(config.realm_id);
     grpcmmo::auth::v1::ListCharactersResponse list_response;
     const grpc::Status list_status =
@@ -237,7 +244,8 @@ bool GrpcSessionClient::FetchOrCreateCharacter(
     {
         if (error_message != nullptr)
         {
-            *error_message = "list characters failed: " + list_status.error_message();
+            *error_message =
+                "list characters failed: " + list_status.error_message();
         }
         return false;
     }
@@ -253,18 +261,19 @@ bool GrpcSessionClient::FetchOrCreateCharacter(
 
     grpc::ClientContext create_context;
     grpcmmo::auth::v1::CreateCharacterRequest create_request;
-    create_request.set_account_access_token(login_response.account_access_token());
+    create_request.set_account_access_token(
+        login_response.account_access_token());
     create_request.set_realm_id(config.realm_id);
     create_request.set_name(config.character_name);
     grpcmmo::auth::v1::CreateCharacterResponse create_response;
-    const grpc::Status create_status =
-        auth_stub->CreateCharacter(&create_context, create_request, &create_response);
+    const grpc::Status create_status = auth_stub->CreateCharacter(
+        &create_context, create_request, &create_response);
     if (!create_status.ok())
     {
         if (error_message != nullptr)
         {
-            *error_message = "create character failed: " +
-                             create_status.error_message();
+            *error_message =
+                "create character failed: " + create_status.error_message();
         }
         return false;
     }
@@ -279,10 +288,11 @@ bool GrpcSessionClient::OpenSessionStream(
     const grpcmmo::auth::v1::CreateSessionGrantResponse& grant_response,
     std::string* error_message)
 {
-    const auto session_channel =
-        grpc::CreateChannel(ToAddress(grant_response.endpoint()),
-                            grpc::InsecureChannelCredentials());
-    session_stub_ = grpcmmo::session::v1::SessionService::NewStub(session_channel);
+    const auto session_channel = grpc::CreateChannel(
+        ToAddress(grant_response.endpoint()),
+        grpc::InsecureChannelCredentials());
+    session_stub_ =
+        grpcmmo::session::v1::SessionService::NewStub(session_channel);
     session_context_ = std::make_unique<grpc::ClientContext>();
     session_stream_ = session_stub_->OpenSession(session_context_.get());
     if (!session_stream_)
@@ -319,59 +329,57 @@ bool GrpcSessionClient::OpenSessionStream(
 
 void GrpcSessionClient::StartReader()
 {
-    reader_thread_ = std::thread([this]()
-                                 {
-                                     grpcmmo::session::v1::ServerMessage message;
-                                     while (session_stream_ && session_stream_->Read(&message))
-                                     {
-                                         std::lock_guard<std::mutex> lock(queue_mutex_);
-                                         pending_messages_.push_back(message);
-                                     }
-                                     open_.store(false, std::memory_order_relaxed);
-                                 });
+    reader_thread_ = std::thread([this]() {
+        grpcmmo::session::v1::ServerMessage message;
+        while (session_stream_ && session_stream_->Read(&message))
+        {
+            std::lock_guard<std::mutex> lock(queue_mutex_);
+            pending_messages_.push_back(message);
+        }
+        open_.store(false, std::memory_order_relaxed);
+    });
 }
 
 void GrpcSessionClient::StartWriter()
 {
     writer_stop_requested_.store(false, std::memory_order_relaxed);
-    writer_thread_ = std::thread([this]()
-                                 {
-                                     for (;;)
-                                     {
-                                         grpcmmo::session::v1::ClientMessage message;
-                                         {
-                                             std::unique_lock<std::mutex> lock(outgoing_queue_mutex_);
-                                             outgoing_queue_cv_.wait(lock,
-                                                                     [this]()
-                                                                     {
-                                                                         return writer_stop_requested_.load(std::memory_order_relaxed) ||
-                                                                                !pending_outgoing_messages_.empty();
-                                                                     });
+    writer_thread_ = std::thread([this]() {
+        for (;;)
+        {
+            grpcmmo::session::v1::ClientMessage message;
+            {
+                std::unique_lock<std::mutex> lock(outgoing_queue_mutex_);
+                outgoing_queue_cv_.wait(lock, [this]() {
+                    return writer_stop_requested_.load(
+                               std::memory_order_relaxed) ||
+                           !pending_outgoing_messages_.empty();
+                });
 
-                                             if (pending_outgoing_messages_.empty())
-                                             {
-                                                 if (writer_stop_requested_.load(std::memory_order_relaxed))
-                                                 {
-                                                     break;
-                                                 }
-                                                 continue;
-                                             }
+                if (pending_outgoing_messages_.empty())
+                {
+                    if (writer_stop_requested_.load(std::memory_order_relaxed))
+                    {
+                        break;
+                    }
+                    continue;
+                }
 
-                                             message = std::move(pending_outgoing_messages_.front());
-                                             pending_outgoing_messages_.pop_front();
-                                         }
+                message = std::move(pending_outgoing_messages_.front());
+                pending_outgoing_messages_.pop_front();
+            }
 
-                                         std::lock_guard<std::mutex> lock(write_mutex_);
-                                         if (!session_stream_ || !session_stream_->Write(message))
-                                         {
-                                             open_.store(false, std::memory_order_relaxed);
-                                             break;
-                                         }
-                                     }
-                                 });
+            std::lock_guard<std::mutex> lock(write_mutex_);
+            if (!session_stream_ || !session_stream_->Write(message))
+            {
+                open_.store(false, std::memory_order_relaxed);
+                break;
+            }
+        }
+    });
 }
 
-bool GrpcSessionClient::EnqueueMessage(grpcmmo::session::v1::ClientMessage&& message)
+bool GrpcSessionClient::EnqueueMessage(
+    grpcmmo::session::v1::ClientMessage&& message)
 {
     if (!open_.load(std::memory_order_relaxed))
     {

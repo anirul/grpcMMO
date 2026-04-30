@@ -14,7 +14,7 @@ namespace
 {
 class Statement final
 {
-public:
+  public:
     Statement(sqlite3* db, const char* sql)
     {
         sqlite3_prepare_v2(db, sql, -1, &statement_, nullptr);
@@ -33,14 +33,15 @@ public:
         return statement_;
     }
 
-private:
+  private:
     sqlite3_stmt* statement_ = nullptr;
 };
 
 std::string ColumnText(sqlite3_stmt* statement, int column)
 {
     const unsigned char* value = sqlite3_column_text(statement, column);
-    return value == nullptr ? std::string{} : reinterpret_cast<const char*>(value);
+    return value == nullptr ? std::string{}
+                            : reinterpret_cast<const char*>(value);
 }
 
 void BindText(sqlite3_stmt* statement, int index, const std::string& value)
@@ -59,8 +60,7 @@ void Exec(sqlite3* db, const char* sql)
 }
 } // namespace
 
-SqliteStorage::SqliteStorage(BackendConfig config)
-    : config_(std::move(config))
+SqliteStorage::SqliteStorage(BackendConfig config) : config_(std::move(config))
 {
     if (config_.connection_string.empty())
     {
@@ -97,8 +97,10 @@ std::string SqliteStorage::Describe() const
 }
 
 std::optional<AccountRecord> SqliteStorage::CreateAccount(
-    const std::string& login_name, const std::string& password,
-    const std::string& display_name, std::string* error_message)
+    const std::string& login_name,
+    const std::string& password,
+    const std::string& display_name,
+    std::string* error_message)
 {
     std::scoped_lock lock(mutex_);
     EnsureOpen();
@@ -129,15 +131,16 @@ std::optional<AccountRecord> SqliteStorage::CreateAccount(
     return record;
 }
 
-std::optional<AccountRecord> SqliteStorage::Login(const std::string& login_name,
-                                                  const std::string& password)
+std::optional<AccountRecord> SqliteStorage::Login(
+    const std::string& login_name, const std::string& password)
 {
     std::scoped_lock lock(mutex_);
     EnsureOpen();
 
-    Statement statement(db_,
-                        "SELECT account_id, display_name "
-                        "FROM accounts WHERE login_name = ?1 AND password = ?2;");
+    Statement statement(
+        db_,
+        "SELECT account_id, display_name "
+        "FROM accounts WHERE login_name = ?1 AND password = ?2;");
     BindText(statement.Get(), 1, login_name);
     BindText(statement.Get(), 2, password);
 
@@ -170,7 +173,8 @@ std::vector<CharacterRecord> SqliteStorage::ListCharacters(
         db_,
         "SELECT character_id, account_id, realm_id, name, planet_id, zone_id, "
         "last_seen_time_ms, online "
-        "FROM characters WHERE account_id = ?1 AND realm_id = ?2 ORDER BY name;");
+        "FROM characters WHERE account_id = ?1 AND realm_id = ?2 ORDER BY "
+        "name;");
     BindText(statement.Get(), 1, *account_id);
     BindText(statement.Get(), 2, realm_id);
 
@@ -183,8 +187,8 @@ std::vector<CharacterRecord> SqliteStorage::ListCharacters(
         record.name = ColumnText(statement.Get(), 3);
         record.planet_id = ColumnText(statement.Get(), 4);
         record.zone_id = ColumnText(statement.Get(), 5);
-        record.last_seen_time_ms =
-            static_cast<std::uint64_t>(sqlite3_column_int64(statement.Get(), 6));
+        record.last_seen_time_ms = static_cast<std::uint64_t>(
+            sqlite3_column_int64(statement.Get(), 6));
         record.online = sqlite3_column_int(statement.Get(), 7) != 0;
         records.push_back(std::move(record));
     }
@@ -193,8 +197,10 @@ std::vector<CharacterRecord> SqliteStorage::ListCharacters(
 }
 
 std::optional<CharacterRecord> SqliteStorage::CreateCharacter(
-    const std::string& account_access_token, const std::string& realm_id,
-    const std::string& name, std::string* error_message)
+    const std::string& account_access_token,
+    const std::string& realm_id,
+    const std::string& name,
+    std::string* error_message)
 {
     std::scoped_lock lock(mutex_);
     EnsureOpen();
@@ -214,7 +220,8 @@ std::optional<CharacterRecord> SqliteStorage::CreateCharacter(
 
     Statement statement(
         db_,
-        "INSERT INTO characters(character_id, account_id, realm_id, name, planet_id, "
+        "INSERT INTO characters(character_id, account_id, realm_id, name, "
+        "planet_id, "
         "zone_id, last_seen_time_ms, online) "
         "VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, 0);");
     BindText(statement.Get(), 1, character_id);
@@ -239,8 +246,10 @@ std::optional<CharacterRecord> SqliteStorage::CreateCharacter(
 }
 
 std::optional<SessionGrantRecord> SqliteStorage::CreateSessionGrant(
-    const std::string& account_access_token, const std::string& realm_id,
-    const std::string& character_id, std::string* error_message)
+    const std::string& account_access_token,
+    const std::string& realm_id,
+    const std::string& character_id,
+    std::string* error_message)
 {
     std::scoped_lock lock(mutex_);
     EnsureOpen();
@@ -255,7 +264,8 @@ std::optional<SessionGrantRecord> SqliteStorage::CreateSessionGrant(
         return std::nullopt;
     }
 
-    const auto character = FindCharacterById(*account_id, realm_id, character_id);
+    const auto character =
+        FindCharacterById(*account_id, realm_id, character_id);
     if (!character.has_value())
     {
         if (error_message != nullptr)
@@ -272,7 +282,8 @@ std::optional<SessionGrantRecord> SqliteStorage::CreateSessionGrant(
 
     Statement statement(
         db_,
-        "INSERT INTO session_grants(session_id, session_token, account_id, character_id, "
+        "INSERT INTO session_grants(session_id, session_token, account_id, "
+        "character_id, "
         "realm_id, planet_id, zone_id, expires_at_ms) "
         "VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8);");
     BindText(statement.Get(), 1, session_id);
@@ -282,8 +293,8 @@ std::optional<SessionGrantRecord> SqliteStorage::CreateSessionGrant(
     BindText(statement.Get(), 5, character->realm_id);
     BindText(statement.Get(), 6, character->planet_id);
     BindText(statement.Get(), 7, character->zone_id);
-    sqlite3_bind_int64(statement.Get(), 8,
-                       static_cast<sqlite3_int64>(expires_at_ms));
+    sqlite3_bind_int64(
+        statement.Get(), 8, static_cast<sqlite3_int64>(expires_at_ms));
 
     if (sqlite3_step(statement.Get()) != SQLITE_DONE)
     {
@@ -315,7 +326,8 @@ std::optional<SessionGrantRecord> SqliteStorage::FindSessionGrant(
 
     Statement statement(
         db_,
-        "SELECT sg.session_id, sg.session_token, sg.account_id, sg.character_id, "
+        "SELECT sg.session_id, sg.session_token, sg.account_id, "
+        "sg.character_id, "
         "c.name, sg.realm_id, sg.planet_id, sg.zone_id, sg.expires_at_ms "
         "FROM session_grants sg "
         "JOIN characters c ON c.character_id = sg.character_id "
@@ -361,7 +373,8 @@ std::optional<std::string> SqliteStorage::AccountIdFromAccessToken(
         return std::nullopt;
     }
     const std::string account_id = account_access_token.substr(5);
-    return account_id.empty() ? std::nullopt : std::optional<std::string>(account_id);
+    return account_id.empty() ? std::nullopt
+                              : std::optional<std::string>(account_id);
 }
 
 void SqliteStorage::EnsureOpen()
@@ -377,65 +390,75 @@ void SqliteStorage::EnsureOpen()
         std::filesystem::create_directories(db_path.parent_path());
     }
 
-    sqlite3_open_v2(config_.connection_string.c_str(), &db_,
-                    SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX,
-                    nullptr);
+    sqlite3_open_v2(
+        config_.connection_string.c_str(),
+        &db_,
+        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX,
+        nullptr);
 }
 
 void SqliteStorage::EnsureSchema()
 {
-    Exec(db_,
-         "CREATE TABLE IF NOT EXISTS accounts ("
-         "account_id TEXT PRIMARY KEY,"
-         "login_name TEXT NOT NULL UNIQUE,"
-         "password TEXT NOT NULL,"
-         "display_name TEXT NOT NULL);");
-    Exec(db_,
-         "CREATE TABLE IF NOT EXISTS characters ("
-         "character_id TEXT PRIMARY KEY,"
-         "account_id TEXT NOT NULL,"
-         "realm_id TEXT NOT NULL,"
-         "name TEXT NOT NULL,"
-         "planet_id TEXT NOT NULL,"
-         "zone_id TEXT NOT NULL,"
-         "last_seen_time_ms INTEGER NOT NULL,"
-         "online INTEGER NOT NULL DEFAULT 0,"
-         "UNIQUE(realm_id, name));");
-    Exec(db_,
-         "CREATE TABLE IF NOT EXISTS session_grants ("
-         "session_id TEXT PRIMARY KEY,"
-         "session_token TEXT NOT NULL UNIQUE,"
-         "account_id TEXT NOT NULL,"
-         "character_id TEXT NOT NULL,"
-         "realm_id TEXT NOT NULL,"
-         "planet_id TEXT NOT NULL,"
-         "zone_id TEXT NOT NULL,"
-         "expires_at_ms INTEGER NOT NULL);");
+    Exec(
+        db_,
+        "CREATE TABLE IF NOT EXISTS accounts ("
+        "account_id TEXT PRIMARY KEY,"
+        "login_name TEXT NOT NULL UNIQUE,"
+        "password TEXT NOT NULL,"
+        "display_name TEXT NOT NULL);");
+    Exec(
+        db_,
+        "CREATE TABLE IF NOT EXISTS characters ("
+        "character_id TEXT PRIMARY KEY,"
+        "account_id TEXT NOT NULL,"
+        "realm_id TEXT NOT NULL,"
+        "name TEXT NOT NULL,"
+        "planet_id TEXT NOT NULL,"
+        "zone_id TEXT NOT NULL,"
+        "last_seen_time_ms INTEGER NOT NULL,"
+        "online INTEGER NOT NULL DEFAULT 0,"
+        "UNIQUE(realm_id, name));");
+    Exec(
+        db_,
+        "CREATE TABLE IF NOT EXISTS session_grants ("
+        "session_id TEXT PRIMARY KEY,"
+        "session_token TEXT NOT NULL UNIQUE,"
+        "account_id TEXT NOT NULL,"
+        "character_id TEXT NOT NULL,"
+        "realm_id TEXT NOT NULL,"
+        "planet_id TEXT NOT NULL,"
+        "zone_id TEXT NOT NULL,"
+        "expires_at_ms INTEGER NOT NULL);");
 }
 
 void SqliteStorage::EnsureSeedData()
 {
-    Exec(db_,
-         "INSERT OR IGNORE INTO accounts(account_id, login_name, password, display_name) "
-         "VALUES('acct-demo', 'demo', 'demo', 'Demo Account');");
+    Exec(
+        db_,
+        "INSERT OR IGNORE INTO accounts(account_id, login_name, password, "
+        "display_name) "
+        "VALUES('acct-demo', 'demo', 'demo', 'Demo Account');");
 }
 
 std::string SqliteStorage::MakeId(const std::string& prefix)
 {
     std::ostringstream stream;
-    stream << prefix << '-' << grpcmmo::shared::NowMs() << '-' << next_local_id_++;
+    stream << prefix << '-' << grpcmmo::shared::NowMs() << '-'
+           << next_local_id_++;
     return stream.str();
 }
 
 std::optional<CharacterRecord> SqliteStorage::FindCharacterById(
-    const std::string& account_id, const std::string& realm_id,
+    const std::string& account_id,
+    const std::string& realm_id,
     const std::string& character_id)
 {
     Statement statement(
         db_,
         "SELECT character_id, account_id, realm_id, name, planet_id, zone_id, "
         "last_seen_time_ms, online "
-        "FROM characters WHERE account_id = ?1 AND realm_id = ?2 AND character_id = ?3;");
+        "FROM characters WHERE account_id = ?1 AND realm_id = ?2 AND "
+        "character_id = ?3;");
     BindText(statement.Get(), 1, account_id);
     BindText(statement.Get(), 2, realm_id);
     BindText(statement.Get(), 3, character_id);

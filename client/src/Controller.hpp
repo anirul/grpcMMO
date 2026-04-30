@@ -8,7 +8,7 @@ class Pawn;
 
 class Controller : public Object
 {
-public:
+  public:
     void Init() override;
     void End() override;
     void Tick(float delta_seconds) override;
@@ -19,7 +19,7 @@ public:
     [[nodiscard]] Pawn* GetPawn();
     [[nodiscard]] const Pawn* GetPawn() const;
 
-private:
+  private:
     Pawn* pawn_ = nullptr;
 };
 } // namespace grpcmmo::client

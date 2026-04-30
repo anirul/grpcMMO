@@ -9,7 +9,7 @@ namespace grpcmmo::client
 {
 class CameraActor final : public Actor
 {
-public:
+  public:
     void SetCameraId(std::string camera_id)
     {
         camera_id_ = std::move(camera_id);
@@ -36,7 +36,7 @@ public:
         return "CameraActor";
     }
 
-private:
+  private:
     std::string camera_id_;
     CameraPose pose_{};
 };

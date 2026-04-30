@@ -55,7 +55,8 @@ CameraActor* CameraDirector::FindCamera(const std::string& camera_id)
     return it != cameras_by_id_.end() ? it->second : nullptr;
 }
 
-const CameraActor* CameraDirector::FindCamera(const std::string& camera_id) const
+const CameraActor* CameraDirector::FindCamera(
+    const std::string& camera_id) const
 {
     const auto it = cameras_by_id_.find(camera_id);
     return it != cameras_by_id_.end() ? it->second : nullptr;

@@ -2,31 +2,34 @@ syntax = "proto3";
 
 package grpcmmo.combat.v1;
 
-enum CombatEventKind {
-  COMBAT_EVENT_KIND_UNSPECIFIED = 0;
-  COMBAT_EVENT_KIND_DAMAGE = 1;
-  COMBAT_EVENT_KIND_HEAL = 2;
-  COMBAT_EVENT_KIND_MISS = 3;
-  COMBAT_EVENT_KIND_DODGE = 4;
-  COMBAT_EVENT_KIND_DEATH = 5;
-  COMBAT_EVENT_KIND_RESPAWN = 6;
-  COMBAT_EVENT_KIND_CAST_START = 7;
-  COMBAT_EVENT_KIND_CAST_FINISH = 8;
+enum CombatEventKind
+{
+    COMBAT_EVENT_KIND_UNSPECIFIED = 0;
+    COMBAT_EVENT_KIND_DAMAGE = 1;
+    COMBAT_EVENT_KIND_HEAL = 2;
+    COMBAT_EVENT_KIND_MISS = 3;
+    COMBAT_EVENT_KIND_DODGE = 4;
+    COMBAT_EVENT_KIND_DEATH = 5;
+    COMBAT_EVENT_KIND_RESPAWN = 6;
+    COMBAT_EVENT_KIND_CAST_START = 7;
+    COMBAT_EVENT_KIND_CAST_FINISH = 8;
 }
 
-message ObservedResource {
-  string resource_id = 1;
-  float current = 2;
-  float maximum = 3;
+message ObservedResource
+{
+    string resource_id = 1;
+    float current = 2;
+    float maximum = 3;
 }
 
-message CombatEvent {
-  string event_id = 1;
-  CombatEventKind kind = 2;
-  uint64 server_time_ms = 3;
-  string source_entity_id = 4;
-  string target_entity_id = 5;
-  float amount = 6;
-  string text = 7;
-  repeated ObservedResource resources = 8;
+message CombatEvent
+{
+    string event_id = 1;
+    CombatEventKind kind = 2;
+    uint64 server_time_ms = 3;
+    string source_entity_id = 4;
+    string target_entity_id = 5;
+    float amount = 6;
+    string text = 7;
+    repeated ObservedResource resources = 8;
 }
