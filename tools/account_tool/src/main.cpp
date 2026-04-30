@@ -5,7 +5,9 @@
 #include "absl/flags/parse.h"
 #include "grpcmmo/storage/SqliteStorage.hpp"
 
-ABSL_FLAG(std::string, db_path, "data/grpcmmo.sqlite3", "SQLite database path.");
+ABSL_FLAG(
+    std::string, db_path, "data/grpcmmo.sqlite3", "SQLite database path."
+);
 ABSL_FLAG(std::string, login_name, "", "Login name for the new account.");
 ABSL_FLAG(std::string, password, "", "Password for the new account.");
 ABSL_FLAG(std::string, display_name, "", "Display name for the new account.");
@@ -20,7 +22,8 @@ int main(int argc, char** argv)
 
     if (login_name.empty() || password.empty())
     {
-        std::cerr << "Both --login_name and --password are required." << std::endl;
+        std::cerr << "Both --login_name and --password are required."
+                  << std::endl;
         return 1;
     }
 
@@ -37,8 +40,9 @@ int main(int argc, char** argv)
     storage.Initialize();
 
     std::string error_message;
-    const auto account =
-        storage.CreateAccount(login_name, password, display_name, &error_message);
+    const auto account = storage.CreateAccount(
+        login_name, password, display_name, &error_message
+    );
     if (!account.has_value())
     {
         std::cerr << "CreateAccount failed: " << error_message << std::endl;
