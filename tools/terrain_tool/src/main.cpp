@@ -13,19 +13,19 @@
 
 namespace
 {
-const std::string kDefaultInputTiff =
-    std::filesystem::path(grpcmmo::shared::kDataRoot)
-        .append("sources")
-        .append("mars")
-        .append("mars_mgs_mola_dem_463m.tif")
-        .string();
+    const std::string kDefaultInputTiff =
+        std::filesystem::path(grpcmmo::shared::kDataRoot)
+            .append("sources")
+            .append("mars")
+            .append("mars_mgs_mola_dem_463m.tif")
+            .string();
 
-const std::string kDefaultOutputDir =
-    std::filesystem::path(grpcmmo::shared::kDataRoot)
-        .append("tiles")
-        .append("mars")
-        .append("patch-000")
-        .string();
+    const std::string kDefaultOutputDir =
+        std::filesystem::path(grpcmmo::shared::kDataRoot)
+            .append("tiles")
+            .append("mars")
+            .append("patch-000")
+            .string();
 } // namespace
 
 ABSL_FLAG(bool, inspect_only, false, "Print raster metadata and exit.");

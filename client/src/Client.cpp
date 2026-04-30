@@ -35,166 +35,167 @@ ABSL_FLAG(
 
 namespace grpcmmo::client
 {
-namespace
-{
-constexpr glm::uvec2 kDefaultWindowSize{1280u, 720u};
-}
-
-int Client::Run(int argc, char** argv)
-{
-    frame::common::Application app(argc, argv, kDefaultWindowSize);
-    LoadFlags();
-
-    std::string error_message;
-    if (!session_.Connect(connection_config_, &error_message))
+    namespace
     {
-        std::cerr << error_message << std::endl;
-        return 1;
+        constexpr glm::uvec2 kDefaultWindowSize{1280u, 720u};
     }
 
-    asset_bootstrap_.EnsureFrameAssetsAvailable();
-    const auto level_json_path =
-        asset_bootstrap_.WriteGeneratedLevelJson(client_world_.BuildLevelProto()
-        );
-    app.Startup(level_json_path);
-    app.GetWindow().SetWindowTitle("grpcMMO - Third Person");
-    client_world_.Attach(app.GetWindow());
-    client_world_.Init();
-
-    running_ = true;
-    last_frame_time_ = std::chrono::steady_clock::now();
-    last_move_sent_at_ = last_frame_time_;
-
-    const auto window_result = app.Run([this]()
+    int Client::Run(int argc, char** argv)
     {
-        const auto now = std::chrono::steady_clock::now();
-        const float delta_seconds =
-            std::chrono::duration<float>(now - last_frame_time_).count();
-        last_frame_time_ = now;
+        frame::common::Application app(argc, argv, kDefaultWindowSize);
+        LoadFlags();
 
-        PumpNetworkMessages();
-        if (!running_)
+        std::string error_message;
+        if (!session_.Connect(connection_config_, &error_message))
         {
-            return false;
+            std::cerr << error_message << std::endl;
+            return 1;
         }
 
-        if (!Tick(delta_seconds))
+        asset_bootstrap_.EnsureFrameAssetsAvailable();
+        const auto level_json_path = asset_bootstrap_.WriteGeneratedLevelJson(
+            client_world_.BuildLevelProto()
+        );
+        app.Startup(level_json_path);
+        app.GetWindow().SetWindowTitle("grpcMMO - Third Person");
+        client_world_.Attach(app.GetWindow());
+        client_world_.Init();
+
+        running_ = true;
+        last_frame_time_ = std::chrono::steady_clock::now();
+        last_move_sent_at_ = last_frame_time_;
+
+        const auto window_result = app.Run([this]()
         {
-            return false;
+            const auto now = std::chrono::steady_clock::now();
+            const float delta_seconds =
+                std::chrono::duration<float>(now - last_frame_time_).count();
+            last_frame_time_ = now;
+
+            PumpNetworkMessages();
+            if (!running_)
+            {
+                return false;
+            }
+
+            if (!Tick(delta_seconds))
+            {
+                return false;
+            }
+            if (!SendMoveIfDue())
+            {
+                running_ = false;
+                return false;
+            }
+            return running_;
+        });
+        client_world_.End();
+        session_.Shutdown();
+        return window_result == frame::WindowReturnEnum::UKNOWN ? 1 : 0;
+    }
+
+    void Client::LoadFlags()
+    {
+        connection_config_.auth_server_address =
+            absl::GetFlag(FLAGS_auth_server_address);
+        connection_config_.login_name = absl::GetFlag(FLAGS_login_name);
+        connection_config_.password = absl::GetFlag(FLAGS_password);
+        connection_config_.realm_id = absl::GetFlag(FLAGS_realm_id);
+        connection_config_.character_name = absl::GetFlag(FLAGS_character_name);
+        window_size_ = glm::uvec2(
+            static_cast<unsigned int>(
+                std::max(640, absl::GetFlag(FLAGS_window_width))
+            ),
+            static_cast<unsigned int>(
+                std::max(360, absl::GetFlag(FLAGS_window_height))
+            )
+        );
+        move_send_interval_ = std::chrono::milliseconds(
+            std::max(16, absl::GetFlag(FLAGS_move_send_interval_ms))
+        );
+        auto_move_duration_ = std::chrono::duration<float>(static_cast<float>(
+            std::max(0.0, absl::GetFlag(FLAGS_auto_move_seconds))
+        ));
+        client_world_.Configure(ClientWorldConfig{
+            auto_move_duration_, absl::GetFlag(FLAGS_debug_pose_trace)
+        });
+        frame::Logger::GetInstance()->set_level(spdlog::level::warn);
+        frame::Logger::GetInstance()->flush_on(spdlog::level::warn);
+    }
+
+    void Client::PumpNetworkMessages()
+    {
+        session_.PollMessages(
+            [this](const grpcmmo::session::v1::ServerMessage& message)
+        {
+            switch (message.payload_case())
+            {
+            case grpcmmo::session::v1::ServerMessage::kSessionReady:
+                client_world_.OnSessionReady(message.session_ready());
+                std::cout << "[session] ready pawn="
+                          << message.session_ready().controlled_entity_id()
+                          << " zone=" << message.session_ready().zone_id()
+                          << std::endl;
+                break;
+            case grpcmmo::session::v1::ServerMessage::kReplication:
+                client_world_.ApplyReplicationBatch(message.replication());
+                break;
+            case grpcmmo::session::v1::ServerMessage::kNotice:
+                std::cout << "[notice] " << message.notice().code() << ": "
+                          << message.notice().message() << std::endl;
+                if (message.notice().fatal())
+                {
+                    running_ = false;
+                }
+                break;
+            default:
+                break;
+            }
         }
-        if (!SendMoveIfDue())
+        );
+
+        if (!session_.IsOpen())
+        {
+            running_ = false;
+        }
+    }
+
+    bool Client::Tick(float delta_seconds)
+    {
+        client_world_.Tick(delta_seconds);
+        if (client_world_.IsExitRequested())
         {
             running_ = false;
             return false;
         }
-        return running_;
-    });
-    client_world_.End();
-    session_.Shutdown();
-    return window_result == frame::WindowReturnEnum::UKNOWN ? 1 : 0;
-}
+        return true;
+    }
 
-void Client::LoadFlags()
-{
-    connection_config_.auth_server_address =
-        absl::GetFlag(FLAGS_auth_server_address);
-    connection_config_.login_name = absl::GetFlag(FLAGS_login_name);
-    connection_config_.password = absl::GetFlag(FLAGS_password);
-    connection_config_.realm_id = absl::GetFlag(FLAGS_realm_id);
-    connection_config_.character_name = absl::GetFlag(FLAGS_character_name);
-    window_size_ = glm::uvec2(
-        static_cast<unsigned int>(
-            std::max(640, absl::GetFlag(FLAGS_window_width))
-        ),
-        static_cast<unsigned int>(
-            std::max(360, absl::GetFlag(FLAGS_window_height))
-        )
-    );
-    move_send_interval_ = std::chrono::milliseconds(
-        std::max(16, absl::GetFlag(FLAGS_move_send_interval_ms))
-    );
-    auto_move_duration_ = std::chrono::duration<float>(static_cast<float>(
-        std::max(0.0, absl::GetFlag(FLAGS_auto_move_seconds))
-    ));
-    client_world_.Configure(ClientWorldConfig{
-        auto_move_duration_, absl::GetFlag(FLAGS_debug_pose_trace)
-    });
-    frame::Logger::GetInstance()->set_level(spdlog::level::warn);
-    frame::Logger::GetInstance()->flush_on(spdlog::level::warn);
-}
-
-void Client::PumpNetworkMessages()
-{
-    session_.PollMessages(
-        [this](const grpcmmo::session::v1::ServerMessage& message)
+    bool Client::SendMoveIfDue()
     {
-        switch (message.payload_case())
+        if (!client_world_.HasControlledPawn())
         {
-        case grpcmmo::session::v1::ServerMessage::kSessionReady:
-            client_world_.OnSessionReady(message.session_ready());
-            std::cout << "[session] ready pawn="
-                      << message.session_ready().controlled_entity_id()
-                      << " zone=" << message.session_ready().zone_id()
-                      << std::endl;
-            break;
-        case grpcmmo::session::v1::ServerMessage::kReplication:
-            client_world_.ApplyReplicationBatch(message.replication());
-            break;
-        case grpcmmo::session::v1::ServerMessage::kNotice:
-            std::cout << "[notice] " << message.notice().code() << ": "
-                      << message.notice().message() << std::endl;
-            if (message.notice().fatal())
-            {
-                running_ = false;
-            }
-            break;
-        default:
-            break;
+            return true;
         }
-    }
-    );
 
-    if (!session_.IsOpen())
-    {
-        running_ = false;
-    }
-}
+        if (!client_world_.HasPendingMoveCommand())
+        {
+            return true;
+        }
 
-bool Client::Tick(float delta_seconds)
-{
-    client_world_.Tick(delta_seconds);
-    if (client_world_.IsExitRequested())
-    {
-        running_ = false;
-        return false;
-    }
-    return true;
-}
+        const auto now = std::chrono::steady_clock::now();
+        if ((now - last_move_sent_at_) < move_send_interval_)
+        {
+            return true;
+        }
 
-bool Client::SendMoveIfDue()
-{
-    if (!client_world_.HasControlledPawn())
-    {
-        return true;
+        last_move_sent_at_ = now;
+        const bool sent =
+            session_.SendMove(client_world_.GetPendingMoveCommand());
+        if (sent)
+        {
+            client_world_.OnMoveSent();
+        }
+        return sent;
     }
-
-    if (!client_world_.HasPendingMoveCommand())
-    {
-        return true;
-    }
-
-    const auto now = std::chrono::steady_clock::now();
-    if ((now - last_move_sent_at_) < move_send_interval_)
-    {
-        return true;
-    }
-
-    last_move_sent_at_ = now;
-    const bool sent = session_.SendMove(client_world_.GetPendingMoveCommand());
-    if (sent)
-    {
-        client_world_.OnMoveSent();
-    }
-    return sent;
-}
 } // namespace grpcmmo::client
