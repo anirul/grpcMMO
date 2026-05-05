@@ -6,97 +6,112 @@ import "chat/v1/chat.proto";
 import "combat/v1/combat.proto";
 import "world/v1/replication.proto";
 
-service SessionService {
-  rpc OpenSession(stream ClientMessage) returns (stream ServerMessage);
+service SessionService
+{
+    rpc OpenSession(stream ClientMessage) returns (stream ServerMessage);
 }
 
-message BeginSession {
-  string session_token = 1;
-  string character_id = 2;
-  string requested_zone_id = 3;
-  uint64 last_received_snapshot_id = 4;
+message BeginSession
+{
+    string session_token = 1;
+    string character_id = 2;
+    string requested_zone_id = 3;
+    uint64 last_received_snapshot_id = 4;
 }
 
-message MoveCommand {
-  grpcmmo.world.v1.Vector3d world_displacement_m = 1;
-  grpcmmo.world.v1.Vector3d facing_direction_unit = 6;
-  reserved 2, 3, 4, 5;
+message MoveCommand
+{
+    grpcmmo.world.v1.Vector3d world_displacement_m = 1;
+    grpcmmo.world.v1.Vector3d facing_direction_unit = 6;
+    reserved 2, 3, 4, 5;
 }
 
-enum ActionKind {
-  ACTION_KIND_UNSPECIFIED = 0;
-  ACTION_KIND_JUMP = 1;
-  ACTION_KIND_PRIMARY = 2;
-  ACTION_KIND_SECONDARY = 3;
-  ACTION_KIND_INTERACT = 4;
-  ACTION_KIND_HOTBAR_1 = 5;
-  ACTION_KIND_HOTBAR_2 = 6;
-  ACTION_KIND_HOTBAR_3 = 7;
-  ACTION_KIND_HOTBAR_4 = 8;
+enum ActionKind
+{
+    ACTION_KIND_UNSPECIFIED = 0;
+    ACTION_KIND_JUMP = 1;
+    ACTION_KIND_PRIMARY = 2;
+    ACTION_KIND_SECONDARY = 3;
+    ACTION_KIND_INTERACT = 4;
+    ACTION_KIND_HOTBAR_1 = 5;
+    ACTION_KIND_HOTBAR_2 = 6;
+    ACTION_KIND_HOTBAR_3 = 7;
+    ACTION_KIND_HOTBAR_4 = 8;
 }
 
-message ActionInput {
-  ActionKind kind = 1;
-  bool pressed = 2;
+message ActionInput
+{
+    ActionKind kind = 1;
+    bool pressed = 2;
 }
 
-message InputFrame {
-  string command_id = 1;
-  uint64 client_time_ms = 2;
-  uint64 input_sequence = 3;
-  MoveCommand move = 4;
-  repeated ActionInput actions = 5;
+message InputFrame
+{
+    string command_id = 1;
+    uint64 client_time_ms = 2;
+    uint64 input_sequence = 3;
+    MoveCommand move = 4;
+    repeated ActionInput actions = 5;
 }
 
-message ClientAck {
-  uint64 latest_received_snapshot_id = 1;
-  uint64 latest_applied_snapshot_id = 2;
+message ClientAck
+{
+    uint64 latest_received_snapshot_id = 1;
+    uint64 latest_applied_snapshot_id = 2;
 }
 
-message Ping {
-  string nonce = 1;
+message Ping
+{
+    string nonce = 1;
 }
 
-message ClientMessage {
-  oneof payload {
-    BeginSession begin_session = 1;
-    InputFrame input_frame = 2;
-    grpcmmo.chat.v1.SendChatRequest chat = 3;
-    ClientAck ack = 4;
-    Ping ping = 5;
-  }
+message ClientMessage
+{
+    oneof payload
+    {
+        BeginSession begin_session = 1;
+        InputFrame input_frame = 2;
+        grpcmmo.chat.v1.SendChatRequest chat = 3;
+        ClientAck ack = 4;
+        Ping ping = 5;
+    }
 }
 
-message SessionReady {
-  string connection_id = 1;
-  string session_id = 2;
-  string controlled_entity_id = 3;
-  string planet_id = 4;
-  string zone_id = 5;
-  uint64 snapshot_send_interval_ms_hint = 6;
-  uint64 interpolation_back_time_ms_hint = 7;
-  uint64 heartbeat_interval_ms_hint = 8;
-  grpcmmo.world.v1.EntityPatch initial_controlled_entity = 9;
+message SessionReady
+{
+    string connection_id = 1;
+    string session_id = 2;
+    string controlled_entity_id = 3;
+    string planet_id = 4;
+    string zone_id = 5;
+    uint64 snapshot_send_interval_ms_hint = 6;
+    uint64 interpolation_back_time_ms_hint = 7;
+    uint64 heartbeat_interval_ms_hint = 8;
+    grpcmmo.world.v1.EntityPatch initial_controlled_entity = 9;
 }
 
-message SystemNotice {
-  string code = 1;
-  string message = 2;
-  bool fatal = 3;
+message SystemNotice
+{
+    string code = 1;
+    string message = 2;
+    bool fatal = 3;
 }
 
-message Pong {
-  string nonce = 1;
-  uint64 server_time_ms = 2;
+message Pong
+{
+    string nonce = 1;
+    uint64 server_time_ms = 2;
 }
 
-message ServerMessage {
-  oneof payload {
-    SessionReady session_ready = 1;
-    grpcmmo.world.v1.ReplicationBatch replication = 2;
-    grpcmmo.chat.v1.ChatEnvelope chat = 3;
-    grpcmmo.combat.v1.CombatEvent combat = 4;
-    SystemNotice notice = 5;
-    Pong pong = 6;
-  }
+message ServerMessage
+{
+    oneof payload
+    {
+        SessionReady session_ready = 1;
+        grpcmmo.world.v1.ReplicationBatch replication = 2;
+        grpcmmo.chat.v1.ChatEnvelope chat = 3;
+        grpcmmo.combat.v1.CombatEvent combat = 4;
+        SystemNotice notice = 5;
+        Pong pong = 6;
+    }
 }
